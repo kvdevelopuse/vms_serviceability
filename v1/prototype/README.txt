@@ -1,60 +1,44 @@
 VEHICLE SERVICEABILITY PROTOTYPE
+Updated from the replacement 1920 x 1080 references on 23 October 2026.
 
-Open locally
-------------
-Double-click index.html in this folder. Keep app.js, styles.css and assets/
-beside it. JavaScript must be enabled. No server, installation, build step,
-account or internet connection is required.
+OPEN LOCALLY
+Double-click index.html. Keep app.js, styles.css and assets/ alongside it.
+JavaScript must be enabled. No server, installation or internet is required.
 
-Host it
--------
-Upload the ENTIRE contents of this prototype folder to any static web host.
-Open its index.html. It also works inside a hosting subfolder. All runtime
-paths are relative. The PRD, source images, styling references and tests
-outside this folder are not required for hosting.
+HOST
+Upload this folder's entire contents to any static web host. index.html can
+be at the host root or in a subfolder. Every runtime dependency is local.
 
-Click through
--------------
-1. Start on Vehicle Serviceability in Light Mode.
-2. Select All Vehicles, Sedan, SUV or People Movers to open its detail view.
-3. Use the top-right Dark Mode / Light Mode button on any screen.
-4. Use the circular Back control to return to the dashboard.
+CLICK THROUGH
+Select All Vehicles, Sedan, SUV or People Movers. Use the circular Back
+control to return to the dashboard. Dark Mode / Light Mode switches the
+current screen and remains selected while navigating. Reload starts in
+Light Mode. Browser Back and Forward also navigate the views.
 
-Theme selection is retained while navigating. Opening or reloading the page
-starts in Light Mode. URL fragments select the detail screen, for example
-index.html#suv. The browser's Back and Forward controls also navigate views.
+UPDATED REFERENCES
+The latest same-named images govern the layout, visible rows and values.
+The Fleet Management heading and displayed serviceability calculation have
+been removed as requested. Available / Total summary values are retained.
+All detail views use the new uniform layout without vehicle illustrations.
+The SUV Dark source is now readable and was inspected directly.
 
-Search, status filters, Clear Filters, page controls, menus and trend period
-are presentation elements from the references. Their behavior and additional
-data were not specified in the PRD. Only the visible supplied records appear.
+Only supplied records appear. Literal differences between categories and
+rounded percentages are preserved. For example, SUV shows Serviceability
+63% and Available 62%, as the replacement detail screenshots show. Sedan's
+MN-6789 year is now 2024 in both themes. No values are calculated or live.
 
-Source and fidelity notes
--------------------------
-The prototype uses the supplied reference images and literal displayed values.
-Conflicting records remain as shown in each source. For example, MN-6789 in
-Sedan is 2024 in Light Mode and 2023 in Dark Mode; the All Vehicles view shows
-the same plate against a different model. Summary counts and percentages are
-literal, including rounding inconsistencies.
+The dashboard vehicle regions are taken directly from the new dashboard
+images, including the cropping already present in those supplied images.
+The trend is a fixed illustration traced from the new reference.
 
-The supplied SUV Dark PNG cannot be fully decoded. Its view therefore uses
-the SUV Light content with the shared dark styling. It cannot be compared
-against an intact SUV Dark source. Light strips above Dashboard Dark and
-Sedan Dark are omitted in the HTML reconstruction. Source content cut off
-by image boundaries is not treated as a supplied extra dataset. The trend
-is a fixed illustration traced from the visible source, not computed data.
+Search, status, pagination, row menus and trend-period controls remain
+presentation elements; no behavior or additional records were specified.
 
-The theme button's placement/default were unspecified; this build uses the
-top-right header and Light Mode. These implementation decisions do not
-resolve the PRD's still-open stakeholder acceptance decisions.
+VERIFICATION
+Rendering and interaction checks passed for all ten view/theme states in
+local-file and HTTP DOM runs. All ten reference images decode completely.
+No browser provider was available for screenshots, so pixel-level browser
+comparison remains unverified. Narrow layouts scroll tables horizontally.
 
-The target reference resolution is 1920 x 1080. Narrower screens use a flowing
-layout and horizontally scrollable tables. This is an HTML reconstruction;
-pixel-perfect equivalence and formal stakeholder acceptance are not claimed.
-
-Development checks
-------------------
-From the v1 folder, with Node.js installed:
-  node tests/prototype-check.cjs
-  node --check prototype/app.js
-
-Node.js is only needed to run development checks, never to use the prototype.
+The source repository contains v1/ and its development checks. The separate
+deployment repository contains only this folder's contents at its root.

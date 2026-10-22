@@ -1,5 +1,7 @@
 # Vehicle serviceability static prototype design
 
+Historical initial design. The replacement-image revision is recorded in `REFERENCE_REFRESH.md` at the v1 root; current verification is in `docs/superpowers/vehicle-serviceability-verification.md`.
+
 Status: proposed for review. Source: `Vehicle_Serviceability_Prototype_PRD_v0_1.md` and the local `images` and `styling` folders.
 
 Implementation note: the user subsequently instructed proceeding according to the PRD. The delivered prototype and verification record document source exceptions and implementation choices; this design's proposals are not retroactively marked as formal stakeholder approvals.

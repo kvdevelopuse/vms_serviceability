@@ -1,5 +1,7 @@
 # Vehicle Serviceability Prototype PRD
 
+Reference refresh: the user subsequently supplied replacement same-named images and requested removal of the Fleet Management heading and displayed calculation. See [REFERENCE_REFRESH.md](REFERENCE_REFRESH.md) for the current source changes and explicit overrides. Source-defect descriptions below refer to the original image set, not the replacements.
+
 Version 0.1 | 23 October 2026 | Provisional for review
 
 Create a clickable vehicle serviceability prototype that reproduces the supplied reference images, supports Dark Mode and Light Mode, and opens the All, Sedan, SUV and People Movers detail screens. Exact visual and data fidelity is the central acceptance condition.

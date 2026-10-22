@@ -19,13 +19,14 @@ for (const theme of ['light', 'dark']) {
     const html = renderScreen(state);
     assert.ok(html.includes(`<h1 tabindex="-1">${title}</h1>`), `${screen}: correct heading`);
     assert.ok(html.includes(total), `${screen}: literal total`);
+    assert.ok(html.includes('<span>Available / Total</span>'), `${screen}: summary ratio label retained`);
     assert.ok(html.includes(plate), `${screen}: source records`);
     for (const image of html.matchAll(/<img src="([^"]+)"/g)) {
       assert.ok(fs.existsSync(path.join(root, image[1])), `illustration exists: ${image[1]}`);
     }
-    if (screen === 'people-movers' || screen === 'all') {
-      assert.ok(html.includes(`src="assets/${screen}-${theme}.png"`), `${screen}: use its detail illustration`);
-    }
+    assert.ok(!html.includes('vehicle-art'), `${screen}: updated details have no vehicle illustrations`);
+    assert.ok(html.includes('<th scope="col">Last Updated</th>'), `${screen}: current column label`);
+    assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 9 : 8, `${screen}: only current reference columns`);
     assert.equal((html.match(/<tr data-plate=/g) || []).length, count, `${screen}: visible rows only`);
     const switched = transition(state, {type: 'toggle-theme'});
     assert.deepEqual(switched, {screen, theme: theme === 'light' ? 'dark' : 'light'});
@@ -39,6 +40,13 @@ for (const theme of ['light', 'dark']) {
   assert.ok(dashboard.includes('84 / 120'));
   assert.ok(dashboard.includes('63%'));
   assert.ok(dashboard.includes('12 vehicles not available'));
+  assert.ok(!/fleet management/i.test(dashboard), 'requested heading removed');
+  assert.ok(!/Available vehicles\s*\/\s*Total vehicles/i.test(dashboard), 'requested formula removed');
+  const suv = renderScreen({screen:'suv', theme});
+  assert.match(suv, /Available<\/span><\/div><b>62%<\/b>/, 'literal SUV availability is 62%; its serviceability remains 63%');
+  assert.match(renderScreen({screen:'sedan', theme}), /data-plate="CD-5678"[^]*?22 Oct 2026 08:50/);
+  assert.match(renderScreen({screen:'sedan', theme}), /data-plate="GH-3456"[^]*?22 Oct 2026 08:20/);
+  assert.ok(renderScreen({screen:'sedan', theme}).includes('Mission #M-1023'));
 }
 assert.equal(screenFromHash('#suv'), 'suv');
 assert.equal(screenFromHash('#not-a-screen'), 'dashboard');
@@ -48,7 +56,7 @@ assert.deepEqual(transition({screen:'sedan', theme:'dark'}, {type:'navigate', sc
 const lightSedan = renderScreen({screen:'sedan', theme:'light'});
 const darkSedan = renderScreen({screen:'sedan', theme:'dark'});
 assert.match(lightSedan, /data-plate="MN-6789"[^]*?<td>2024<\/td>/);
-assert.match(darkSedan, /data-plate="MN-6789"[^]*?<td>2023<\/td>/);
+assert.match(darkSedan, /data-plate="MN-6789"[^]*?<td>2024<\/td>/);
 
 // These source-image boundaries separate the vehicle pixels from baked-in UI.
 const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
@@ -59,12 +67,17 @@ function cropVariables(selector) {
   return Object.fromEntries([...block.matchAll(/--crop-(\w+):\s*(\d+)/g)].map(m => [m[1], Number(m[2])]));
 }
 const baseCrop = cropVariables('.vehicle-art');
-const darkCrop = {...baseCrop, ...cropVariables('[data-theme="dark"] .vehicle-art')};
-assert.ok(darkCrop.y + darkCrop.height <= 620, 'dark dashboard illustration must stop before the baked-in category controls');
-const peopleCrop = {...baseCrop, ...cropVariables('.vehicle-people-movers')};
-assert.ok(peopleCrop.x + peopleCrop.width < 1880, 'people mover illustration must exclude the source card border');
+for (const kind of ['all', 'sedan', 'suv', 'people-movers']) {
+  const crop = {...baseCrop, ...cropVariables('.vehicle-' + kind)};
+  assert.ok(crop.y >= 337 && crop.y + crop.height <= 490, `${kind}: only the updated source illustration region`);
+  assert.ok(crop.x >= 100 && crop.x + crop.width <= 1770, `${kind}: crop inside updated image bounds`);
+}
 
 const entry = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+for (const theme of ['light', 'dark']) {
+  const source = path.join(__dirname, '..', 'images', `Dashboard_${theme === 'light' ? 'Light' : 'Dark'}_1920x1080.png`);
+  assert.deepEqual(fs.readFileSync(path.join(root, 'assets', `dashboard-${theme}.png`)), fs.readFileSync(source), `${theme}: runtime art must use the replacement image`);
+}
 assert.ok(!/type=["']module/.test(entry), 'classic scripts support direct file opening');
 for (const match of entry.matchAll(/(?:src|href)="([^"#]+)"/g)) {
   assert.ok(!/^https?:\/\//.test(match[1]), 'no remote runtime dependencies');

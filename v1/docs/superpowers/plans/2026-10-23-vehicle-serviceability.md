@@ -1,5 +1,7 @@
 # Vehicle Serviceability Implementation Plan
 
+Historical initial plan. The subsequent replacement-image revision and explicit header removals are recorded in `REFERENCE_REFRESH.md` at the v1 root.
+
 > **For agentic workers:** Use superpowers:executing-plans to implement this plan in the current session. Track completed steps below.
 
 **Goal:** Deliver a portable static vehicle serviceability prototype from the supplied PRD.
