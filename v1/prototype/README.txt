@@ -27,15 +27,19 @@ rounded percentages are preserved. For example, SUV shows Serviceability
 63% and Available 62%, as the replacement detail screenshots show. Sedan's
 MN-6789 year is now 2024 in both themes. No values are calculated or live.
 
-The dashboard vehicle regions are taken directly from the new dashboard
-images, including the cropping already present in those supplied images.
+The dashboard uses standalone high-resolution transparent vehicle images,
+centered with their complete silhouettes visible. The All Vehicles card
+combines the same three vehicle assets. Sources are in assets/IMAGE_SOURCES.txt.
+The dashboard fits its complete content to the viewport without scrollbars;
+card sizes are compact and the layout refits when the window is resized.
 The trend is a fixed illustration traced from the new reference.
 
 Search, status, pagination, row menus and trend-period controls remain
 presentation elements; no behavior or additional records were specified.
 
 VERIFICATION
-Rendering and interaction checks passed for all ten view/theme states in
+All displayed text and values are checked against a baseline captured before
+the image/layout fix. Rendering and interaction checks passed for all ten view/theme states in
 local-file and HTTP DOM runs. All ten reference images decode completely.
 No browser provider was available for screenshots, so pixel-level browser
 comparison remains unverified. Narrow layouts scroll tables horizontally.

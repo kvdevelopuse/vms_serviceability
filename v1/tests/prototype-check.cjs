@@ -5,7 +5,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..', 'prototype');
 assert.ok(fs.existsSync(path.join(root, 'index.html')), 'prototype/index.html must exist');
-const { transition, renderScreen, screenFromHash } = require('../prototype/app.js');
+const { transition, renderScreen, screenFromHash, dashboardScale } = require('../prototype/app.js');
+const { createHash } = require('node:crypto');
+const displayedText = require('./fixtures/displayed-text-sha256.json');
+for (const theme of ['light', 'dark']) for (const screen of ['dashboard','all','sedan','suv','people-movers']) {
+  const text = renderScreen({screen,theme}).replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+  assert.equal(createHash('sha256').update(text).digest('hex'), displayedText[`${screen}/${theme}`], `${screen}/${theme}: every displayed value remains unchanged`);
+}
+for (const [contentWidth, contentHeight, width, height] of [[1920,1100,1920,1080],[1366,1250,1366,768],[1200,900,1200,600],[390,1600,390,844],[900,600,1920,1080]]) {
+  const scale = dashboardScale(contentWidth, contentHeight, width, height);
+  assert.ok(contentWidth * scale <= width + .001 && contentHeight * scale <= height + .001, 'entire dashboard fits the viewport');
+  assert.ok(scale > 0 && scale <= 1, 'no image upscaling');
+}
 
 for (const theme of ['light', 'dark']) {
   for (const [screen, title, total, count, plate] of [
@@ -40,6 +51,12 @@ for (const theme of ['light', 'dark']) {
   assert.ok(dashboard.includes('84 / 120'));
   assert.ok(dashboard.includes('63%'));
   assert.ok(dashboard.includes('12 vehicles not available'));
+  for (const kind of ['sedan','suv','people-movers']) {
+    const file = `assets/vehicle-${kind}.png`;
+    assert.ok(dashboard.includes(`src="${file}"`), `${kind}: standalone clear vehicle image`);
+    assert.ok(fs.existsSync(path.join(root, file)), `${kind}: replacement image is bundled`);
+  }
+  assert.ok(!dashboard.includes('src="assets/dashboard-'), 'no screenshot crops');
   assert.ok(!/fleet management/i.test(dashboard), 'requested heading removed');
   assert.ok(!/Available vehicles\s*\/\s*Total vehicles/i.test(dashboard), 'requested formula removed');
   const suv = renderScreen({screen:'suv', theme});
@@ -58,26 +75,7 @@ const darkSedan = renderScreen({screen:'sedan', theme:'dark'});
 assert.match(lightSedan, /data-plate="MN-6789"[^]*?<td>2024<\/td>/);
 assert.match(darkSedan, /data-plate="MN-6789"[^]*?<td>2024<\/td>/);
 
-// These source-image boundaries separate the vehicle pixels from baked-in UI.
-const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-function cropVariables(selector) {
-  const start = css.indexOf(selector + ' {');
-  assert.ok(start >= 0, `crop selector exists: ${selector}`);
-  const block = css.slice(start, css.indexOf('}', start));
-  return Object.fromEntries([...block.matchAll(/--crop-(\w+):\s*(\d+)/g)].map(m => [m[1], Number(m[2])]));
-}
-const baseCrop = cropVariables('.vehicle-art');
-for (const kind of ['all', 'sedan', 'suv', 'people-movers']) {
-  const crop = {...baseCrop, ...cropVariables('.vehicle-' + kind)};
-  assert.ok(crop.y >= 337 && crop.y + crop.height <= 490, `${kind}: only the updated source illustration region`);
-  assert.ok(crop.x >= 100 && crop.x + crop.width <= 1770, `${kind}: crop inside updated image bounds`);
-}
-
 const entry = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-for (const theme of ['light', 'dark']) {
-  const source = path.join(__dirname, '..', 'images', `Dashboard_${theme === 'light' ? 'Light' : 'Dark'}_1920x1080.png`);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'assets', `dashboard-${theme}.png`)), fs.readFileSync(source), `${theme}: runtime art must use the replacement image`);
-}
 assert.ok(!/type=["']module/.test(entry), 'classic scripts support direct file opening');
 for (const match of entry.matchAll(/(?:src|href)="([^"#]+)"/g)) {
   assert.ok(!/^https?:\/\//.test(match[1]), 'no remote runtime dependencies');

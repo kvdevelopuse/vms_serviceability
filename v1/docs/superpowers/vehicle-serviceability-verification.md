@@ -1,5 +1,17 @@
 # Vehicle serviceability verification — replacement images
 
+## Latest dashboard image and viewport correction
+
+The user subsequently requested clearer centered dashboard images, no dashboard scrollbar and no displayed value changes. The dashboard now uses three inspected high-resolution transparent vehicle PNGs, with object-fit contain and centered positioning. All Vehicles composes the same assets. Screenshot crops are no longer runtime dependencies.
+
+Before edits, a text baseline for all ten view/theme states was captured in `tests/fixtures/displayed-text-sha256.json`. After edits, all ten displayed-text hashes match exactly. No summary values, labels, timestamps, table records or chart values changed.
+
+Dashboard-only styles fit the complete layout to the viewport with a scale computed from natural content width/height. Resize and theme/navigation repaints recalculate the fit. Scaling never exceeds 1. Unit checks cover reference, laptop, short and phone viewport dimensions. Page overflow is disabled only while this fitted dashboard is active; detail pages regain normal scrolling. Runtime file and HTTP DOM checks pass. All three vehicle images decode completely, are at least 1500 pixels wide and contain transparent pixels.
+
+No browser provider is available, so pixel-level browser inspection remains unverified. The earlier source-crop checks and runtime PNG-copy assertions below describe the previous revision and are superseded by standalone-image, unchanged-text and viewport-fit checks.
+
+Independent review of the image and fitting changes found no Critical or Important findings. It reran the Node checks, inspected all three images, and confirmed that fit measurements use unscaled dimensions, image boxes reserve height, and the overflow/scale restrictions end on detail navigation. DOM checks additionally exercise the resize handler with controlled content dimensions and check that details restore normal overflow.
+
 23 October 2026. Current scope: rebuild from the ten replacement same-named references, remove the Fleet Management heading and displayed serviceability formula, preserve local/hosted operation, and push both existing repositories.
 
 ## Checks completed

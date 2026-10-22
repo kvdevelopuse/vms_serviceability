@@ -104,15 +104,16 @@ function header(screen, theme) {
   </header>`;
 }
 
-// The supplied full images are used as CSS sprites for their vehicle illustrations.
-function vehicleArt(kind, theme) {
-  return `<span class="vehicle-art vehicle-${kind}" role="img" aria-label="${kind === 'all' ? 'Fleet of vehicles' : kind === 'people-movers' ? 'People mover' : kind === 'sedan' ? 'Sedan' : 'SUV'}"><img src="assets/dashboard-${theme}.png" alt="" draggable="false"></span>`;
+// Standalone cutouts keep the whole vehicle sharp and centered in either theme.
+function vehicleArt(kind) {
+  const vehicles = kind === 'all' ? ['people-movers', 'suv', 'sedan'] : [kind];
+  return `<span class="vehicle-art vehicle-${kind}" role="img" aria-label="${kind === 'all' ? 'Fleet of vehicles' : kind === 'people-movers' ? 'People mover' : kind === 'sedan' ? 'Sedan' : 'SUV'}">${vehicles.map(vehicle => `<img class="art-${vehicle}" src="assets/vehicle-${vehicle}.png" alt="" draggable="false">`).join('')}</span>`;
 }
 
-function dashboard(theme) {
+function dashboard() {
   const cards = Object.entries(fleet).map(([key, data]) => `<a href="#${key}" class="category-card category-${key}" aria-label="Open ${data.title}">
       <div class="category-numbers"><div><strong class="service-percent">${data.percent}</strong><span>Serviceability</span></div><div class="category-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
-      ${vehicleArt(key, theme)}
+      ${vehicleArt(key)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><span class="round-arrow">${icon('arrow')}</span></div>
     </a>`).join('');
   return `<section class="category-grid" aria-label="Vehicle categories">${cards}</section>
@@ -179,20 +180,34 @@ function vehicleTable(screen) {
 
 function renderScreen(state) {
   const screen = Object.hasOwn(fleet, state.screen) ? state.screen : 'dashboard';
-  return header(screen, state.theme) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(state.theme) : summary(screen) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen) + '</section>'}</main>`;
+  return header(screen, state.theme) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard() : summary(screen) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen) + '</section>'}</main>`;
+}
+
+function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeight) {
+  return Math.min(1, viewportWidth / Math.max(1, contentWidth), viewportHeight / Math.max(1, contentHeight));
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale};
 }
 
 if (typeof document !== 'undefined') {
   let state = {screen: screenFromHash(location.hash), theme: 'light'};
   const app = document.getElementById('app');
+  function fitDashboard() {
+    if (state.screen === 'dashboard') {
+      const scale = dashboardScale(app.scrollWidth, app.scrollHeight, window.innerWidth, window.innerHeight);
+      app.style.setProperty('--dashboard-scale', scale);
+    } else {
+      app.style.removeProperty('--dashboard-scale');
+    }
+  }
   function paint(focusHeading = false) {
     document.documentElement.dataset.theme = state.theme;
+    document.documentElement.dataset.screen = state.screen;
     document.title = `${state.screen === 'dashboard' ? 'Vehicle Serviceability' : fleet[state.screen].title} | Vehicle Serviceability Prototype`;
     app.innerHTML = renderScreen(state);
+    fitDashboard();
     if (focusHeading) {
       app.querySelector('h1').focus({preventScroll: true});
       window.scrollTo(0, 0);
@@ -209,5 +224,6 @@ if (typeof document !== 'undefined') {
     state = transition(state, {type: 'navigate', screen: screenFromHash(location.hash)});
     paint(true);
   });
+  window.addEventListener('resize', fitDashboard);
   paint();
 }

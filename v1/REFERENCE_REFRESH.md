@@ -1,5 +1,7 @@
 # Replacement reference update
 
+Subsequent dashboard correction: the user requested clear centered vehicle images and no dashboard scrollbar, with every displayed value preserved. Standalone transparent vehicle images now replace the screenshot crops. The dashboard fits its full content to the viewport and recalculates on resize; detail views retain scrolling. `tests/fixtures/displayed-text-sha256.json` captures the pre-change text of all ten states and verifies it remains unchanged. Asset sources and extraction prompts are recorded in `prototype/assets/IMAGE_SOURCES.txt`. The paragraphs below describe the preceding reference-refresh revision.
+
 23 October 2026. This update records the user's instruction to redo the existing prototype from the replacement images, remove the Fleet Management heading and displayed Available vehicles / Total vehicles × 100 calculation, and push both repositories.
 
 The ten same-named 1920 by 1080 PNGs currently in `images/` and `images/details/` supersede the original visual sources. All ten now decode completely. In particular, SUV Dark is readable, and the previous mixed-theme strips are absent. Original-source defect statements in the provisional PRD and initial design/plan are historical.

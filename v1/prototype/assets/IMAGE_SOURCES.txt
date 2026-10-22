@@ -1,0 +1,29 @@
+DASHBOARD VEHICLE ASSETS
+
+vehicle-sedan.png
+Reference photo: silver Toyota Camry
+https://www.vhv.rs/viewpic/bmTwom_camry-2018-le-hd-png-download/
+
+vehicle-suv.png
+Reference photo: silver Toyota RAV4
+https://www.pngwing.com/es/free-png-doebr
+
+vehicle-people-movers.png
+Reference photo: white Toyota Hiace passenger van
+https://www.pngwing.com/en/free-png-hmkwf
+
+The downloaded reference images contained baked-in checkerboard backgrounds.
+The built-in image-generation tool was used to extract each complete vehicle
+onto a transparent canvas. The final project assets are stored here, without
+external runtime requests. The All Vehicles card composes the same three PNGs.
+
+Prompt set (one call per subject: silver sedan, silver SUV, white passenger van):
+Use case: background-extraction. Asset type: crisp vehicle cutout for a fleet
+dashboard card. Remove the entire baked-in white/gray checkerboard and replace
+it with genuine alpha transparency. Preserve the vehicle's photorealistic
+design, paint, windows, tires and proportions. Keep the entire vehicle visible
+with no clipped bumpers, roof, mirrors or tires. Center it with a small even
+transparent margin. Retain only a subtle contact shadow below the tires.
+No ground plane, checker pattern, text, UI, labels, watermark, border or added
+objects. Sharp clean edges and high-resolution product photography for pale
+and dark dashboard cards.
