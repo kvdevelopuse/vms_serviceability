@@ -152,8 +152,11 @@ assert.match(reactSource, /\.\.\.\(id \? \{id\} : \{\}\)/, 'Unit field applies a
 assert.match(reactSource, /aria-disabled="true"/, 'React Unit field is disabled');
 assert.match(reactStyles, /\.vms-serviceability/);
 assert.match(reactStyles, /\[data-theme="dark"\]/);
+assert.match(reactStyles, /\.vms-fleet-card__numbers > strong::after/);
+assert.match(reactStyles, /\.vms-serviceability-card__percentage strong::after/);
+assert.match(reactStyles, /\.vms-summary-card > b/);
 assert.match(reactReadme, /ERP integration inputs/);
 assert.match(reactReadme, /disabled Unit text input/);
 assert.doesNotMatch(reactReadme, /onUnitTextChange/);
 
-console.log('PASS: reconciled snapshots; disabled Unit/dialog contracts; premium card surfaces; React integration; local dependencies.');
+console.log('PASS: reconciled snapshots; disabled Unit/dialog contracts; premium card surfaces and percentage indicators; React integration; local dependencies.');

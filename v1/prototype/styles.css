@@ -27,6 +27,13 @@
   --card-unavailable-border: #d8adb7;
   --control-disabled: #e3e7ec;
   --control-disabled-border: #b8c2cc;
+  --indicator-serviceable: #075f46;
+  --indicator-unserviceable: #963247;
+  --indicator-mission: #245487;
+  --indicator-serviceable-soft: #d1e6dc;
+  --indicator-unserviceable-soft: #efd5da;
+  --indicator-mission-soft: #d3e1ee;
+  --indicator-text-shadow: 0 1px 0 rgb(255 255 255 / .55);
   --card-shadow: 0 12px 30px rgb(36 84 135 / .1), 0 2px 6px rgb(17 28 45 / .06);
 }
 :root[data-theme="dark"] {
@@ -57,6 +64,13 @@
   --card-unavailable-border: #68404a;
   --control-disabled: #1b303a;
   --control-disabled-border: #3a5361;
+  --indicator-serviceable: #83e6bf;
+  --indicator-unserviceable: #ff9aaa;
+  --indicator-mission: #7bd1f6;
+  --indicator-serviceable-soft: #163e34;
+  --indicator-unserviceable-soft: #482a31;
+  --indicator-mission-soft: #15384c;
+  --indicator-text-shadow: 0 0 14px rgb(131 230 191 / .14);
   --card-shadow: 0 14px 34px rgb(0 0 0 / .28), 0 2px 8px rgb(0 0 0 / .22);
 }
 * { box-sizing: border-box; }
@@ -517,3 +531,55 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
 .available-stat { border-color: var(--card-available-border); background-color: var(--card-available-surface); }
 .mission-stat { border-color: var(--card-mission-border); background-color: var(--card-mission-surface); }
 .unavailable-stat { border-color: var(--card-unavailable-border); background-color: var(--card-unavailable-surface); }
+
+/* Percentage indicators use the existing values and card split variables. */
+:root[data-theme] .service-percent,
+:root[data-theme] .summary-percent strong {
+  position: relative;
+  display: inline-block;
+  width: max-content;
+  color: var(--indicator-serviceable);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1.6px;
+  text-shadow: var(--indicator-text-shadow);
+}
+:root[data-theme] .service-percent::after,
+:root[data-theme] .summary-percent strong::after {
+  position: absolute;
+  right: 0;
+  bottom: -5px;
+  left: 0;
+  height: 4px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgb(17 28 45 / .18);
+  content: "";
+}
+:root[data-theme] .service-percent::after {
+  background: linear-gradient(to right, var(--indicator-serviceable) 0 var(--serviceability), var(--indicator-unserviceable) var(--serviceability) 100%);
+}
+:root[data-theme] .summary-percent strong::after {
+  background: linear-gradient(to right, var(--indicator-serviceable) 0 var(--percentage), var(--indicator-unserviceable) var(--percentage) 100%);
+}
+.summary-stat b {
+  position: relative;
+  isolation: isolate;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .1px;
+  transform: translateX(-4px);
+}
+.summary-stat b::before {
+  position: absolute;
+  z-index: -1;
+  inset: -4px -3px -4px -4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  content: "";
+}
+.available-stat b { color: var(--indicator-serviceable); }
+.available-stat b::before { background: var(--indicator-serviceable-soft); }
+.mission-stat b { color: var(--indicator-mission); }
+.mission-stat b::before { background: var(--indicator-mission-soft); }
+.unavailable-stat b { color: var(--indicator-unserviceable); }
+.unavailable-stat b::before { background: var(--indicator-unserviceable-soft); }

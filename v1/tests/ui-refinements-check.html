@@ -78,24 +78,32 @@
         reactFrame.srcdoc = `<link rel="stylesheet" href="${reactStylesUrl}"><body></body>`;
         document.body.append(reactFrame);
         await reactFrameLoaded;
-        for (const width of [390, 740, 900]) {
+        for (const width of [390, 521, 600, 740, 900, 1101]) {
           const reactFixture = reactFrame.contentDocument.createElement('section');
           reactFixture.className = 'vms-serviceability';
           reactFixture.style.width = `${width}px`;
           reactFixture.innerHTML = `<div class="vms-detail-summary">
-            <button class="vms-serviceability-card"><span class="vms-serviceability-card__percentage"><strong>62%</strong></span><span></span><span class="vms-serviceability-card__total"><strong>30 / 48</strong><small>Available / Total</small></span></button>
+            <button class="vms-serviceability-card" style="--vms-percentage:62%"><span class="vms-serviceability-card__percentage"><strong>62%</strong></span><span></span><span class="vms-serviceability-card__total"><strong>30 / 48</strong><small>Available / Total</small></span></button>
             <button class="vms-summary-card vms-summary-card--available"><span class="vms-summary-card__icon">&#10003;</span><span><strong>30</strong><small>Available</small></span><b>62%</b></button>
             <button class="vms-summary-card vms-summary-card--mission"><span class="vms-summary-card__icon">&#8594;</span><span><strong>11</strong><small>On Mission</small></span><b>23%</b></button>
             <button class="vms-summary-card vms-summary-card--unavailable"><span class="vms-summary-card__icon">!</span><span><strong>7</strong><small>Not Available</small></span><b>15%</b></button>
           </div>`;
           reactFrame.contentDocument.body.append(reactFixture);
           await delay(20);
+          const reactIndicatorRail = reactFrame.contentWindow.getComputedStyle(reactFixture.querySelector('.vms-serviceability-card__percentage strong'), '::after');
+          if (!reactIndicatorRail.backgroundImage.includes('linear-gradient') || Number.parseFloat(reactIndicatorRail.height) < 4) throw new Error('React serviceability percentage did not use the premium indicator treatment');
           for (const card of reactFixture.querySelectorAll('.vms-summary-card')) {
             const cardBox = card.getBoundingClientRect();
             for (const child of card.children) {
               const childBox = child.getBoundingClientRect();
               if (childBox.left < cardBox.left - 1 || childBox.right > cardBox.right + 1) throw new Error(`React status-card content overflowed a ${width}px integration boundary`);
             }
+            const percentageNode = card.querySelector('b');
+            const percentageStyle = reactFrame.contentWindow.getComputedStyle(percentageNode);
+            const percentagePill = reactFrame.contentWindow.getComputedStyle(percentageNode, '::before');
+            if (Number(percentageStyle.fontWeight) < 600 || Number.parseFloat(percentagePill.borderRadius) < 20 || percentagePill.backgroundColor === 'rgba(0, 0, 0, 0)') throw new Error('React status percentage did not use the premium pill treatment');
+            const percentageBox = percentageNode.getBoundingClientRect();
+            if (percentageBox.left - 4 < cardBox.left || percentageBox.right + 3 > cardBox.right) throw new Error(`React status percentage decoration overflowed a ${width}px integration boundary`);
           }
           reactFixture.remove();
         }
@@ -140,11 +148,32 @@
           await landscapeLoaded;
           await delay(75);
           const landscapeDoc = landscapeFrame.contentDocument;
+          for (const card of landscapeDoc.querySelectorAll('.summary-stat')) {
+            const cardBox = card.getBoundingClientRect();
+            const percentageBox = card.querySelector('b').getBoundingClientRect();
+            if (percentageBox.left - 4 < cardBox.left || percentageBox.right + 3 > cardBox.right || cardBox.height > 116) throw new Error(`percentage indicator changed or overflowed a status card in ${width}x${height}: card=${cardBox.left.toFixed(1)}..${cardBox.right.toFixed(1)}x${cardBox.height.toFixed(1)}, indicator=${percentageBox.left.toFixed(1)}..${percentageBox.right.toFixed(1)}`);
+          }
           const landscapeTable = landscapeDoc.querySelector('.table-scroll');
           if (landscapeDoc.querySelectorAll('tbody tr').length !== 10 || landscapeTable.getBoundingClientRect().height < 300 || landscapeDoc.documentElement.scrollHeight <= landscapeFrame.contentWindow.innerHeight) {
             throw new Error(`vehicle grid was clipped in ${width}x${height} mobile landscape`);
           }
           landscapeFrame.remove();
+        }
+        for (const [width, height] of [[844, 521], [390, 844]]) {
+          const responsiveFrame = document.createElement('iframe');
+          responsiveFrame.style.cssText = `position:absolute;left:-10000px;top:0;width:${width}px;height:${height}px;border:0`;
+          const responsiveLoaded = new Promise(resolve => responsiveFrame.addEventListener('load', resolve, {once: true}));
+          responsiveFrame.src = '../prototype/index.html#suv';
+          document.body.append(responsiveFrame);
+          await responsiveLoaded;
+          await delay(75);
+          for (const card of responsiveFrame.contentDocument.querySelectorAll('.summary-stat')) {
+            const cardBox = card.getBoundingClientRect();
+            const percentageBox = card.querySelector('b').getBoundingClientRect();
+            const baselineHeight = width === 390 ? 136 : 116;
+            if (percentageBox.left - 4 < cardBox.left || percentageBox.right + 3 > cardBox.right || cardBox.height > baselineHeight) throw new Error(`percentage indicator changed or overflowed a status card in ${width}x${height}: card=${cardBox.left.toFixed(1)}..${cardBox.right.toFixed(1)}x${cardBox.height.toFixed(1)}, indicator=${percentageBox.left.toFixed(1)}..${percentageBox.right.toFixed(1)}`);
+          }
+          responsiveFrame.remove();
         }
         if (JSON.stringify(api.supportedDates) !== JSON.stringify(supportedDates)) throw new Error(`supported dates were ${JSON.stringify(api.supportedDates)}`);
         if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
@@ -210,6 +239,10 @@
           throw new Error('category gradient splits did not match displayed percentages');
         }
         if (cardStyles.some(style => style.boxShadow === 'none' || Number.parseFloat(style.borderRadius) < 14)) throw new Error('dashboard cards did not use the refined professional surface treatment');
+        const dashboardIndicator = doc.querySelector('.service-percent');
+        const dashboardIndicatorStyle = getComputedStyle(dashboardIndicator);
+        const dashboardIndicatorRail = getComputedStyle(dashboardIndicator, '::after');
+        if (Number(dashboardIndicatorStyle.fontWeight) < 700 || !dashboardIndicatorStyle.fontVariantNumeric.includes('tabular-nums') || !dashboardIndicatorRail.backgroundImage.includes('linear-gradient') || Number.parseFloat(dashboardIndicatorRail.height) < 4) throw new Error('dashboard serviceability percentage did not use the premium indicator treatment');
         const lightRootStyle = getComputedStyle(doc.documentElement);
         if (lightRootStyle.getPropertyValue('--card-serviceable').trim() !== '#d8e9df' || lightRootStyle.getPropertyValue('--card-nonserviceable').trim() !== '#f2dde2') throw new Error('Light Mode cards did not use the darker premium palette');
         if (JSON.stringify(['--card-available-surface', '--card-mission-surface', '--card-unavailable-surface'].map(token => lightRootStyle.getPropertyValue(token).trim())) !== JSON.stringify(['#e2efe8', '#e1eaf3', '#f4e1e5'])) throw new Error('Light Mode status cards did not use the darker premium palette');
@@ -245,9 +278,17 @@
         const detailSplits = detailCards.map(card => getComputedStyle(card).getPropertyValue('--percentage').trim());
         if (detailCards.length !== 1 || !detailCards[0].classList.contains('summary-main') || JSON.stringify(detailSplits) !== JSON.stringify(['55%'])) throw new Error(`Serviceability-only percentage split was ${JSON.stringify(detailSplits)}`);
         if (detailCards.some(card => !getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('detail percentage card did not use a proportional gradient');
+        const detailIndicator = doc.querySelector('.summary-percent strong');
+        const detailIndicatorRail = getComputedStyle(detailIndicator, '::after');
+        if (!detailIndicatorRail.backgroundImage.includes('linear-gradient') || Number.parseFloat(detailIndicatorRail.height) < 4) throw new Error('detail serviceability percentage did not use the premium indicator treatment');
         for (const card of doc.querySelectorAll('.summary-stat')) {
-          if (contrastRatio(getComputedStyle(card.querySelector('b')).color, getComputedStyle(card).backgroundColor) < 4.5) throw new Error('Light Mode status-card percentage contrast was below 4.5:1');
+          const percentageNode = card.querySelector('b');
+          const percentageStyle = getComputedStyle(percentageNode);
+          const percentagePill = getComputedStyle(percentageNode, '::before');
+          if (contrastRatio(percentageStyle.color, percentagePill.backgroundColor) < 4.5) throw new Error('Light Mode status-card percentage contrast was below 4.5:1');
+          if (Number(percentageStyle.fontWeight) < 600 || percentagePill.backgroundColor === 'rgba(0, 0, 0, 0)' || Number.parseFloat(percentagePill.borderRadius) < 20) throw new Error('Light Mode status percentage did not use the premium pill treatment');
         }
+        if (getComputedStyle(doc.querySelector('.available-stat b')).color === getComputedStyle(doc.querySelector('.unavailable-stat b')).color) throw new Error('Serviceable and unserviceable percentage indicators were not visually distinct');
         const statusCardStyles = [...doc.querySelectorAll('.summary-stat')].map(card => getComputedStyle(card));
         if (statusCardStyles.some(style => style.backgroundImage.includes('linear-gradient') || style.boxShadow === 'none') || new Set(statusCardStyles.map(style => style.backgroundColor)).size !== 3) throw new Error('non-Serviceability summary cards did not use distinct solid professional surfaces');
         if (api.percentageStyle(0) !== '--percentage:0%' || api.percentageStyle(100) !== '--percentage:100%') throw new Error('0% and 100% gradient endpoints were not supported');
@@ -360,6 +401,12 @@
         if (!getComputedStyle(doc.querySelector('.summary-main')).backgroundImage.includes('linear-gradient') || [...doc.querySelectorAll('.summary-stat')].some(card => getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('Dark Mode did not keep the gradient exclusive to Serviceability');
         const darkStatusStyles = [...doc.querySelectorAll('.summary-stat')].map(card => getComputedStyle(card));
         if (darkStatusStyles.some(style => style.boxShadow === 'none') || new Set(darkStatusStyles.map(style => style.backgroundColor)).size !== 3) throw new Error('Dark Mode status cards did not keep distinct professional surfaces');
+        for (const card of doc.querySelectorAll('.summary-stat')) {
+          const percentageNode = card.querySelector('b');
+          const percentageStyle = getComputedStyle(percentageNode);
+          const percentagePill = getComputedStyle(percentageNode, '::before');
+          if (contrastRatio(percentageStyle.color, percentagePill.backgroundColor) < 4.5 || percentagePill.backgroundColor === 'rgba(0, 0, 0, 0)') throw new Error('Dark Mode status percentage did not retain its premium readable treatment');
+        }
         if (getComputedStyle(dialog).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor) {
           throw new Error('Dark Mode dialog did not match the detail surface');
         }
@@ -461,7 +508,7 @@
         const preservedAssignment = noOpUnavailable.assignment;
         const noOpResult = api.saveRecord('2026-10-22', noOpUnavailable.id, {status: 'Non-Serviceable', discoveredDate: noOpUnavailable.discoveredDate, location: 'Outside Country', deployed: 'No', reason: ''});
         if (noOpResult.assignment !== preservedAssignment || noOpResult.location !== 'Outside Country' || noOpResult.deployed !== 'No' || noOpUnavailable.location !== 'Inside Country') throw new Error('unchanged status/reason Save did not preserve assignment and source immutability');
-        report('PASS', 'premium card surfaces; disabled detail Unit; React integration contract; reconciled records; filters, pagination and persisted edits');
+        report('PASS', 'premium card surfaces and percentage indicators; disabled detail Unit; React integration contract; reconciled records; filters, pagination and persisted edits');
       } catch (error) {
         report('FAIL', error.message);
       } finally {

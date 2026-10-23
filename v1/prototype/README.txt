@@ -58,7 +58,8 @@ The trend is a fixed illustration traced from the new reference. Card
 backgrounds use deeper premium surfaces and restrained shadows. Dashboard
 cards and detail Serviceability split horizontally at the displayed
 serviceability percentage, with sage for serviceable and warm rose for the
-remainder. Fleet Overview is kept
+remainder. Percentage text uses tabular numerals, a matching proportional
+green/red rail, and compact status pills for quick scanning. Fleet Overview is kept
 clear of the complete, uncropped vehicle artwork.
 
 Double-click a detail row to open the five-field record popup in View Mode.

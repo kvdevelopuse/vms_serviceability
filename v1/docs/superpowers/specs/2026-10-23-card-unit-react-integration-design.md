@@ -21,6 +21,8 @@ Refresh the existing cards with a deeper professional palette, show the selected
 
 Use deeper muted sage and warm rose for percentage splits, subdued blue/teal/rose solid surfaces for the three detail status cards, theme-specific borders, and restrained shadows. Text and status colors keep their existing semantic meaning. The layout and all displayed values remain unchanged.
 
+Percentage indicators use heavier tabular numerals and a slim proportional rail derived from the card's existing percentage variable. The rail keeps serviceable green and unserviceable red visible without adding a second displayed value. Detail status percentages use compact tone-matched pills with readable contrast in both themes.
+
 ## Detail Unit field
 
 Render a disabled `type="text"` input on detail screens. It displays the Unit chosen on the dashboard, uses a theme-aware greyed appearance, and cannot be modified. Returning to the dashboard and choosing another fixed Unit updates the displayed value when details reopen.
