@@ -130,8 +130,9 @@
         }
         const detailCards = [...doc.querySelectorAll('.summary-grid > .percentage-card')];
         const detailSplits = detailCards.map(card => getComputedStyle(card).getPropertyValue('--percentage').trim());
-        if (detailCards.length !== 4 || JSON.stringify(detailSplits) !== JSON.stringify(['55%', '55%', '36%', '9%'])) throw new Error(`detail card percentage splits were ${JSON.stringify(detailSplits)}`);
+        if (detailCards.length !== 1 || !detailCards[0].classList.contains('summary-main') || JSON.stringify(detailSplits) !== JSON.stringify(['55%'])) throw new Error(`Serviceability-only percentage split was ${JSON.stringify(detailSplits)}`);
         if (detailCards.some(card => !getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('detail percentage card did not use a proportional gradient');
+        if ([...doc.querySelectorAll('.summary-stat')].some(card => getComputedStyle(card).backgroundImage.includes('linear-gradient') || getComputedStyle(card).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor)) throw new Error('non-Serviceability summary cards did not restore their original surface');
         if (api.percentageStyle(0) !== '--percentage:0%' || api.percentageStyle(100) !== '--percentage:100%') throw new Error('0% and 100% gradient endpoints were not supported');
         if (![...doc.querySelectorAll('tbody tr td:nth-last-child(2)')].every(cell => cell.textContent.trim().startsWith('21-Oct-2026'))) throw new Error('table dates did not use selected dd-MMM-yyyy date');
         if ([...doc.querySelectorAll('th')].some(cell => cell.textContent.trim() === 'Actions')) throw new Error('Actions column remained');
@@ -235,6 +236,7 @@
         await delay(100);
         dialog = doc.querySelector('dialog[open]');
         if (doc.documentElement.dataset.theme !== 'dark' || !dialog) throw new Error('dialog did not remain open in Dark Mode');
+        if (!getComputedStyle(doc.querySelector('.summary-main')).backgroundImage.includes('linear-gradient') || [...doc.querySelectorAll('.summary-stat')].some(card => getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('Dark Mode did not keep the gradient exclusive to Serviceability');
         if (getComputedStyle(dialog).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor) {
           throw new Error('Dark Mode dialog did not match the detail surface');
         }
@@ -327,7 +329,7 @@
         dialog.querySelector('[name="reason"]').value = '<b id="review-marker">Brake check</b>';
         dialog.querySelector('[data-action="save"]').click();
         await delay(100);
-        if (doc.querySelector('.summary-percent').textContent.trim() !== '69%' || doc.querySelector('.available-stat b').textContent.trim() !== '69%' || getComputedStyle(doc.querySelector('.available-stat')).getPropertyValue('--percentage').trim() !== '69%') throw new Error('reference-date Save left the Available percentage or gradient frozen');
+        if (doc.querySelector('.summary-percent').textContent.trim() !== '69%' || doc.querySelector('.available-stat b').textContent.trim() !== '69%' || getComputedStyle(doc.querySelector('.summary-main')).getPropertyValue('--percentage').trim() !== '69%') throw new Error('reference-date Save left the Available percentage or Serviceability gradient frozen');
         const updatedReferenceRow = doc.querySelector(`tr[data-record-id="${referenceId}"]`);
         if (updatedReferenceRow.querySelector('#review-marker') || updatedReferenceRow.lastElementChild.textContent.trim() !== '<b id="review-marker">Brake check</b>') throw new Error('saved Reason was not rendered as plain text');
         const noOpUnavailable = api.vehicleRecords.find(record => record.status === 'Not Available' && record.reason === '' && record.assignment !== 'Under Maintenance');
@@ -335,7 +337,7 @@
         const preservedAssignment = noOpUnavailable.assignment;
         const noOpResult = api.saveRecord('2026-10-22', noOpUnavailable.id, {status: 'Non-Serviceable', discoveredDate: noOpUnavailable.discoveredDate, location: 'Outside Country', deployed: 'No', reason: ''});
         if (noOpResult.assignment !== preservedAssignment || noOpResult.location !== 'Outside Country' || noOpResult.deployed !== 'No' || noOpUnavailable.location !== 'Inside Country') throw new Error('unchanged status/reason Save did not preserve assignment and source immutability');
-        report('PASS', 'three reconciled date snapshots; formatted dates; retained Unit/date; proportional dashboard/detail cards; themed editable row dialog');
+        report('PASS', 'date-specific localStorage edits; reconciled records; summary filters; functional pagination; Serviceability-only gradient; themed editable row dialog');
       } catch (error) {
         report('FAIL', error.message);
       }

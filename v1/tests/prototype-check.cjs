@@ -7,7 +7,7 @@ const root = path.join(__dirname, '..', 'prototype');
 const {
   transition, renderScreen, screenFromHash, dashboardScale,
   vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor,
-  formatDate, percentageStyle,
+  STORAGE_KEY, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle,
 } = require('../prototype/app.js');
 
 assert.equal(vehicleRecords.length, 120);
@@ -58,9 +58,13 @@ state = transition(state, {type: 'set-unit', unit: 'Unit C'});
 state = transition(state, {type: 'set-date', date: '2026-10-21'});
 state = transition(state, {type: 'navigate', screen: 'suv'});
 state = transition(state, {type: 'toggle-theme'});
-assert.deepEqual(state, {screen: 'suv', theme: 'dark', unit: 'Unit C', date: '2026-10-21', activeRecordId: null});
+assert.deepEqual(state, {screen: 'suv', theme: 'dark', unit: 'Unit C', date: '2026-10-21', activeRecordId: null, statusFilter: 'all', page: 1});
 assert.deepEqual(transition(state, {type: 'set-date', date: ''}), state, 'empty date retains previous selection');
 assert.deepEqual(transition(state, {type: 'set-date', date: '2026-12-31'}), state, 'unsupported date retains previous selection');
+state = transition(state, {type: 'set-filter', filter: 'mission'});
+state = transition(state, {type: 'set-page', page: 2});
+assert.equal(state.statusFilter, 'mission');
+assert.equal(transition(state, {type: 'set-date', date: '2026-10-20'}).page, 1, 'date change resets pagination');
 
 const dashboard = renderScreen({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null});
 assert.match(dashboard, /id="unit-filter"/);
@@ -78,12 +82,20 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.match(html, /id="detail-unit" disabled/);
   assert.match(html, /data-date="2026-10-21"/);
   assert.match(html, /21-Oct-2026/);
-  assert.equal((html.match(/class="[^"]*percentage-card[^"]*"/g) || []).length, 4);
+  assert.equal((html.match(/class="[^"]*percentage-card[^"]*"/g) || []).length, 1);
+  assert.equal((html.match(/data-summary-filter=/g) || []).length, 4);
   assert.doesNotMatch(html, />Actions</);
   assert.equal((html.match(/<tr data-record-id=/g) || []).length, Math.min(10, recordsFor('Unit C', screen, '2026-10-21').length));
   assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 7);
   if (screen === 'suv') assert.match(renderScreen({screen, theme: 'light', unit: 'All', date: '2026-10-22'}), /Available<\/span><\/div><b>62%<\/b>/);
 }
+
+const paged = renderScreen({screen: 'suv', theme: 'light', unit: 'Unit C', date: '2026-10-21', statusFilter: 'all', page: 2});
+assert.match(paged, /Page 2 of 2/);
+assert.equal((paged.match(/<tr data-record-id=/g) || []).length, 1);
+const filtered = renderScreen({screen: 'suv', theme: 'light', unit: 'Unit C', date: '2026-10-21', statusFilter: 'mission', page: 1});
+assert.equal((filtered.match(/status-badge mission/g) || []).length, 4);
+assert.match(filtered, /summary-filter active" data-summary-filter="mission"/);
 
 const firstRecord = recordsFor('Unit A', 'sedan', '2026-10-21')[0];
 const dialog = renderScreen({screen: 'sedan', theme: 'light', unit: 'Unit A', date: '2026-10-21', activeRecordId: firstRecord.id});
@@ -94,6 +106,18 @@ assert.match(dialog, /data-action="modify">Modify/);
 assert.match(dialog, /data-action="close">Close/);
 assert.match(dialog, /data-action="save" hidden>Save/);
 assert.match(dialog, /data-action="cancel" hidden>Cancel/);
+
+const memory = new Map();
+const storage = {getItem: key => memory.get(key) || null, setItem: (key, value) => memory.set(key, value)};
+reloadSavedRecords(storage);
+const immutable = JSON.stringify(recordsByDate);
+const storedSource = recordsFor('Unit C', 'suv', '2026-10-21')[0];
+saveRecord('2026-10-21', storedSource.id, {status: 'Non-Serviceable', discoveredDate: '2026-10-20', location: 'Outside Country', deployed: 'No', reason: 'Stored test'}, storage);
+assert.equal(getSavedRecord('2026-10-21', storedSource.id).reason, 'Stored test');
+assert.ok(JSON.parse(memory.get(STORAGE_KEY)).edits[`2026-10-21|${storedSource.id}`]);
+assert.equal(JSON.stringify(recordsByDate), immutable, 'storage overlay keeps source snapshots immutable');
+reloadSavedRecords(storage);
+assert.equal(recordsFor('All', 'all', '2026-10-21').find(record => record.id === storedSource.id).reason, 'Stored test');
 
 for (const [contentWidth, contentHeight, width, height] of [[1920,1100,1920,1080],[1366,1250,1366,768],[390,1600,390,844]]) {
   const scale = dashboardScale(contentWidth, contentHeight, width, height);

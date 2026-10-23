@@ -442,9 +442,9 @@ function summary(screen, state) {
     <div class="summary-main percentage-card ${filterClass('serviceability')}" ${filterAttributes('serviceability')} style="${percentageStyle(data.percent)}"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
     <div class="summary-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
-    <div class="summary-stat available-stat percentage-card ${filterClass('available')}" ${filterAttributes('available')} style="${percentageStyle(availablePercent)}"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
-    <div class="summary-stat mission-stat percentage-card ${filterClass('mission')}" ${filterAttributes('mission')} style="${percentageStyle(data.missionPercent)}"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
-    <div class="summary-stat unavailable-stat percentage-card ${filterClass('unavailable')}" ${filterAttributes('unavailable')} style="${percentageStyle(data.unavailablePercent)}"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
+    <div class="summary-stat available-stat ${filterClass('available')}" ${filterAttributes('available')}><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
+    <div class="summary-stat mission-stat ${filterClass('mission')}" ${filterAttributes('mission')}><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
+    <div class="summary-stat unavailable-stat ${filterClass('unavailable')}" ${filterAttributes('unavailable')}><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
   </section>`;
 }
 
