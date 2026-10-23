@@ -3,7 +3,7 @@
 <title>UI refinement browser check</title>
 <body data-result="running">
   <pre id="result">RUNNING</pre>
-  <iframe id="prototype" src="../prototype/index.html" style="position:absolute;left:-10000px;top:0;width:1920px;height:1080px;border:0"></iframe>
+  <iframe id="prototype" style="position:absolute;left:-10000px;top:0;width:1920px;height:1080px;border:0"></iframe>
   <script>
     const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     const supportedDates = ['2026-10-20', '2026-10-21', '2026-10-22'];
@@ -37,6 +37,10 @@
       document.getElementById('result').textContent = `${status}: ${detail}`;
     };
 
+    const storageKey = 'vms-serviceability-record-edits-v1';
+    const originalStoredEdits = localStorage.getItem(storageKey);
+    localStorage.removeItem(storageKey);
+
     document.getElementById('prototype').addEventListener('load', async event => {
       const frame = event.currentTarget;
       try {
@@ -48,6 +52,31 @@
         frame.contentWindow.localStorage.removeItem(api.STORAGE_KEY);
         api.reloadSavedRecords(frame.contentWindow.localStorage);
         const immutableSource = JSON.stringify(api.recordsByDate);
+        const secondFrame = document.createElement('iframe');
+        secondFrame.style.cssText = 'position:absolute;left:-10000px;top:0;width:1px;height:1px;border:0';
+        const secondLoaded = new Promise(resolve => secondFrame.addEventListener('load', resolve, {once: true}));
+        secondFrame.src = '../prototype/index.html';
+        document.body.append(secondFrame);
+        await secondLoaded;
+        const secondApi = secondFrame.contentWindow.prototypeApi;
+        const tabARecord = api.recordsByDate['2026-10-20'][0];
+        const tabBRecord = secondApi.recordsByDate['2026-10-21'][1];
+        api.saveRecord('2026-10-20', tabARecord.id, {status: 'Serviceable', discoveredDate: '2026-10-20', location: 'Inside Country', deployed: 'Yes', reason: 'Tab A'}, frame.contentWindow.localStorage);
+        secondApi.saveRecord('2026-10-21', tabBRecord.id, {status: 'Non-Serviceable', discoveredDate: '2026-10-21', location: 'Outside Country', deployed: 'No', reason: 'Tab B'}, secondFrame.contentWindow.localStorage);
+        const multiInstanceEdits = JSON.parse(frame.contentWindow.localStorage.getItem(api.STORAGE_KEY)).edits;
+        if (!multiInstanceEdits[`2026-10-20|${tabARecord.id}`] || !multiInstanceEdits[`2026-10-21|${tabBRecord.id}`]) throw new Error('a stale app instance overwrote edits saved by another instance');
+        const reopenedFrame = document.createElement('iframe');
+        reopenedFrame.style.cssText = secondFrame.style.cssText;
+        const reopened = new Promise(resolve => reopenedFrame.addEventListener('load', resolve, {once: true}));
+        reopenedFrame.src = '../prototype/index.html';
+        document.body.append(reopenedFrame);
+        await reopened;
+        const reopenedApi = reopenedFrame.contentWindow.prototypeApi;
+        if (reopenedApi.getSavedRecord('2026-10-20', tabARecord.id)?.reason !== 'Tab A' || reopenedApi.getSavedRecord('2026-10-21', tabBRecord.id)?.reason !== 'Tab B') throw new Error('a reopened app did not rehydrate all stored edits');
+        frame.contentWindow.localStorage.removeItem(api.STORAGE_KEY);
+        api.reloadSavedRecords(frame.contentWindow.localStorage);
+        secondFrame.remove();
+        reopenedFrame.remove();
         if (JSON.stringify(api.supportedDates) !== JSON.stringify(supportedDates)) throw new Error(`supported dates were ${JSON.stringify(api.supportedDates)}`);
         if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
         if (new Set(api.vehicleRecords.map(record => record.id)).size !== 120) throw new Error('record IDs were not unique');
@@ -139,18 +168,22 @@
         if (doc.querySelectorAll('tbody tr').length !== 10) throw new Error('selected-unit first page did not contain ten records');
         if (doc.querySelector('.page-status')?.textContent.trim() !== 'Page 1 of 2' || !doc.querySelector('[data-page-action="previous"]')?.disabled || doc.querySelector('[data-page-action="next"]')?.disabled) throw new Error('initial pagination controls were incorrect');
         const firstPageIds = [...doc.querySelectorAll('tbody tr')].map(row => row.dataset.recordId);
+        doc.querySelector('[data-page-action="next"]').focus();
         doc.querySelector('[data-page-action="next"]').click();
         await delay(75);
         const secondPageRows = [...doc.querySelectorAll('tbody tr')];
         if (doc.querySelector('.page-status').textContent.trim() !== 'Page 2 of 2' || secondPageRows.length !== 1 || firstPageIds.includes(secondPageRows[0].dataset.recordId) || secondPageRows[0].firstElementChild.textContent.trim() !== '11') throw new Error('Next pagination produced duplicate, missing or misnumbered rows');
+        if (doc.activeElement?.dataset.pageAction !== 'previous') throw new Error('pagination did not preserve keyboard focus after repaint');
         secondPageRows[0].dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
         await delay(50);
         if (!doc.querySelector('dialog[open]')) throw new Error('later-page row did not retain double-click behavior');
         doc.querySelector('dialog[open] [data-action="close"]').click();
         await delay(50);
-        doc.querySelector('[data-summary-filter="serviceability"]').click();
+        doc.querySelector('[data-summary-filter="serviceability"]').focus();
+        doc.querySelector('[data-summary-filter="serviceability"]').dispatchEvent(new KeyboardEvent('keydown', {key: ' ', bubbles: true}));
         await delay(75);
         if (doc.querySelector('.page-status').textContent.trim() !== 'Page 1 of 1' || doc.querySelectorAll('tbody tr').length !== 6 || [...doc.querySelectorAll('tbody .status-badge')].some(node => !node.classList.contains('available')) || doc.querySelectorAll('.summary-filter.active').length !== 1 || !doc.querySelector('[data-summary-filter="serviceability"]').classList.contains('active')) throw new Error('Serviceability card filter or active indication was incorrect');
+        if (doc.activeElement?.dataset.summaryFilter !== 'serviceability') throw new Error('summary filtering did not preserve keyboard focus after repaint');
         doc.querySelector('[data-summary-filter="mission"]').click();
         await delay(75);
         if (doc.querySelectorAll('tbody tr').length !== 4 || [...doc.querySelectorAll('tbody .status-badge')].some(node => !node.classList.contains('mission'))) throw new Error('On Mission card did not filter the current Unit/date');
@@ -340,7 +373,11 @@
         report('PASS', 'date-specific localStorage edits; reconciled records; summary filters; functional pagination; Serviceability-only gradient; themed editable row dialog');
       } catch (error) {
         report('FAIL', error.message);
+      } finally {
+        if (originalStoredEdits === null) localStorage.removeItem(storageKey);
+        else localStorage.setItem(storageKey, originalStoredEdits);
       }
     });
+    document.getElementById('prototype').src = '../prototype/index.html';
   </script>
 </body>

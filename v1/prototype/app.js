@@ -209,26 +209,32 @@ function normalizeSavedEdit(edit) {
   };
 }
 
-function reloadSavedRecords(storage) {
-  savedRecordEdits = {};
-  if (!storage) return savedRecordEdits;
+function readSavedRecords(storage) {
+  const edits = {};
+  if (!storage) return edits;
   try {
     const payload = JSON.parse(storage.getItem(STORAGE_KEY) || '{}');
     for (const [key, edit] of Object.entries(payload.edits || {})) {
       const [date, recordId] = key.split('|');
       const validRecord = supportedDates.includes(date) && recordsByDate[date]?.some(record => record.id === recordId);
       const normalized = validRecord ? normalizeSavedEdit(edit) : null;
-      if (normalized) savedRecordEdits[key] = normalized;
+      if (normalized) edits[key] = normalized;
     }
   } catch {
-    savedRecordEdits = {};
+    return {};
   }
+  return edits;
+}
+
+function reloadSavedRecords(storage) {
+  savedRecordEdits = readSavedRecords(storage);
   return savedRecordEdits;
 }
 
 function persistSavedRecords(storage) {
   if (!storage) return;
   try {
+    savedRecordEdits = {...readSavedRecords(storage), ...savedRecordEdits};
     storage.setItem(STORAGE_KEY, JSON.stringify({version: 1, edits: savedRecordEdits}));
   } catch {
     // The prototype still works in-memory when browser storage is unavailable.
@@ -560,14 +566,20 @@ if (typeof document !== 'undefined') {
     }
     const summaryFilter = event.target.closest('[data-summary-filter]');
     if (summaryFilter) {
+      const filter = summaryFilter.dataset.summaryFilter;
       state = transition(state, {type: 'set-filter', filter: summaryFilter.dataset.summaryFilter});
       paint();
+      app.querySelector(`[data-summary-filter="${filter}"]`).focus({preventScroll: true});
       return;
     }
     const pageAction = event.target.closest('[data-page-action]');
     if (pageAction && !pageAction.disabled) {
-      state = transition(state, {type: 'set-page', page: state.page + (pageAction.dataset.pageAction === 'next' ? 1 : -1)});
+      const action = pageAction.dataset.pageAction;
+      state = transition(state, {type: 'set-page', page: state.page + (action === 'next' ? 1 : -1)});
       paint();
+      const matchingControl = app.querySelector(`[data-page-action="${action}"]`);
+      const focusControl = matchingControl.disabled ? app.querySelector(`[data-page-action="${action === 'next' ? 'previous' : 'next'}"]`) : matchingControl;
+      focusControl.focus({preventScroll: true});
       return;
     }
     const dialog = event.target.closest('.record-dialog');
