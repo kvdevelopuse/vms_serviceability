@@ -163,6 +163,8 @@ h1 { font-size: 44px; line-height: 1.2; letter-spacing: -1.1px; font-weight: 700
 .summary-stat strong { font-size: 36px; line-height: 1.2; }
 .summary-stat > div > span { color: var(--secondary); margin-top: 4px; font-size: 18px; white-space: nowrap; }
 .summary-stat b { margin-left: auto; font-weight: 400; font-size: 16px; white-space: nowrap; }
+.summary-filter { position: relative; cursor: pointer; }
+.summary-filter:focus-visible, .summary-filter.active { outline: 3px solid var(--blue); outline-offset: 2px; }
 .available-stat strong, .available-stat b { color: var(--green); }
 .mission-stat strong, .mission-stat b { color: var(--blue); }
 .unavailable-stat strong, .unavailable-stat b { color: var(--red); }
@@ -215,9 +217,11 @@ td:nth-child(7) { width: 20%; }
 .dialog-actions button { min-width: 96px; min-height: 42px; padding: 9px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
 .dialog-actions [data-action="modify"], .dialog-actions [data-action="save"] { border-color: var(--blue); background: var(--blue); color: white; }
 .table-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-top: 20px; font-size: 16px; color: var(--secondary); }
-.pagination { display: flex; align-items: center; gap: 9px; }
-.page-arrow { display: flex; justify-content: center; align-items: center; width: 25px; height: 38px; font-size: 18px; }
-.next-page { transform: rotate(180deg); }
+.pagination { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 9px; }
+.page-arrow { display: flex; justify-content: center; align-items: center; gap: 6px; min-width: 90px; height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font-size: 14px; }
+.page-arrow:disabled { opacity: .45; cursor: not-allowed; }
+.next-page .icon { transform: rotate(180deg); }
+.page-status { min-width: 88px; text-align: center; color: var(--text); }
 .page-number { display: flex; justify-content: center; align-items: center; width: 20px; height: 38px; }
 .page-number.current { width: 38px; border-radius: 50%; color: white; background: #0988f7; }
 .page-size { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; margin-left: 18px; min-width: 140px; padding: 13px 17px; border: 1px solid var(--border); border-radius: 7px; }

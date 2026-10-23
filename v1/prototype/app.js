@@ -344,13 +344,19 @@ function transition(state, action) {
     return {...state, theme: state.theme === 'light' ? 'dark' : 'light'};
   }
   if (action.type === 'navigate') {
-    return {...state, screen: Object.hasOwn(fleet, action.screen) ? action.screen : 'dashboard', activeRecordId: null};
+    return {...state, screen: Object.hasOwn(fleet, action.screen) ? action.screen : 'dashboard', activeRecordId: null, statusFilter: 'all', page: 1};
   }
   if (action.type === 'set-unit' && units.includes(action.unit)) {
-    return {...state, unit: action.unit, activeRecordId: null};
+    return {...state, unit: action.unit, activeRecordId: null, page: 1};
   }
   if (action.type === 'set-date' && supportedDates.includes(action.date)) {
-    return {...state, date: action.date};
+    return {...state, date: action.date, page: 1};
+  }
+  if (action.type === 'set-filter' && ['all', 'serviceability', 'available', 'mission', 'unavailable'].includes(action.filter)) {
+    return {...state, statusFilter: action.filter, activeRecordId: null, page: 1};
+  }
+  if (action.type === 'set-page' && Number.isInteger(action.page) && action.page >= 1) {
+    return {...state, page: action.page, activeRecordId: null};
   }
   if (action.type === 'open-record') {
     return {...state, activeRecordId: action.recordId};
@@ -430,13 +436,15 @@ function summary(screen, state) {
   const baseline = fleet[screen];
   const unchangedReference = state.unit === 'All' && state.date === REFERENCE_DATE && data.available === Number(baseline.available) && data.mission === Number(baseline.mission) && data.unavailable === Number(baseline.unavailable);
   const availablePercent = unchangedReference ? (baseline.availablePercent || baseline.percent) : data.percentLabel;
+  const filterClass = filter => `summary-filter${state.statusFilter === filter ? ' active' : ''}`;
+  const filterAttributes = filter => `data-summary-filter="${filter}" role="button" tabindex="0" aria-pressed="${state.statusFilter === filter}"`;
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
-    <div class="summary-main percentage-card" style="${percentageStyle(data.percent)}"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
+    <div class="summary-main percentage-card ${filterClass('serviceability')}" ${filterAttributes('serviceability')} style="${percentageStyle(data.percent)}"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
     <div class="summary-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
-    <div class="summary-stat available-stat percentage-card" style="${percentageStyle(availablePercent)}"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
-    <div class="summary-stat mission-stat percentage-card" style="${percentageStyle(data.missionPercent)}"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
-    <div class="summary-stat unavailable-stat percentage-card" style="${percentageStyle(data.unavailablePercent)}"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
+    <div class="summary-stat available-stat percentage-card ${filterClass('available')}" ${filterAttributes('available')} style="${percentageStyle(availablePercent)}"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
+    <div class="summary-stat mission-stat percentage-card ${filterClass('mission')}" ${filterAttributes('mission')} style="${percentageStyle(data.missionPercent)}"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
+    <div class="summary-stat unavailable-stat percentage-card ${filterClass('unavailable')}" ${filterAttributes('unavailable')} style="${percentageStyle(data.unavailablePercent)}"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
   </section>`;
 }
 
@@ -449,16 +457,22 @@ function toolbar() {
 }
 
 function vehicleTable(screen, state) {
-  const matchingRecords = recordsFor(state.unit, screen, state.date);
-  const rows = matchingRecords.slice(0, 10).map((record, index) => {
+  const filterStatus = {serviceability: 'Available', available: 'Available', mission: 'On Mission', unavailable: 'Not Available'}[state.statusFilter];
+  const matchingRecords = recordsFor(state.unit, screen, state.date).filter(record => !filterStatus || record.status === filterStatus);
+  const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
+  const page = Math.min(state.page, pages);
+  const offset = (page - 1) * 10;
+  const pageRecords = matchingRecords.slice(offset, offset + 10);
+  const rows = pageRecords.map((record, index) => {
     const statusClass = record.status === 'Available' ? 'available' : record.status === 'On Mission' ? 'mission' : 'unavailable';
-    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>${formatDate(state.date)} ${record.time}</td><td>${escapeHtml(record.assignment)}</td></tr>`;
+    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${offset + index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>${formatDate(state.date)} ${record.time}</td><td>${escapeHtml(record.assignment)}</td></tr>`;
   }).join('');
   const title = fleet[screen].title;
-  const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
   const categoryLabel = screen === 'all' ? 'vehicles' : `${title.toLowerCase()} vehicles`;
-  return `<div class="table-scroll" tabindex="0" role="region" aria-label="${title} vehicle grid"><table><caption class="visually-hidden">${title}: first page of fixed prototype records</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th><th scope="col">Status</th><th scope="col">Last Updated</th><th scope="col">Current Assignment</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="table-footer"><p>Showing ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" role="img" aria-label="Reference pagination, page 1 selected"><span class="page-arrow">${icon('back')}</span><span class="page-number current">1</span>${Array.from({length: pages - 1}, (_, i) => '<span class="page-number">' + (i + 2) + '</span>').join('')}<span class="page-arrow next-page">${icon('back')}</span><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
+  const start = matchingRecords.length ? offset + 1 : 0;
+  const end = Math.min(offset + pageRecords.length, matchingRecords.length);
+  return `<div class="table-scroll" tabindex="0" role="region" aria-label="${title} vehicle grid"><table><caption class="visually-hidden">${title}: page ${page} of ${pages}</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th><th scope="col">Status</th><th scope="col">Last Updated</th><th scope="col">Current Assignment</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-footer"><p>Showing ${start}-${end} of ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" aria-label="Table pagination"><button type="button" class="page-arrow previous-page" data-page-action="previous"${page === 1 ? ' disabled' : ''}>${icon('back')}<span>Previous</span></button><span class="page-status" aria-live="polite">Page ${page} of ${pages}</span><button type="button" class="page-arrow next-page" data-page-action="next"${page === pages ? ' disabled' : ''}><span>Next</span>${icon('back')}</button><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
 }
 
 function recordDialog(state) {
@@ -485,7 +499,7 @@ function recordDialog(state) {
 
 function renderScreen(state) {
   const screen = Object.hasOwn(fleet, state.screen) ? state.screen : 'dashboard';
-  const viewState = {unit: 'All', date: REFERENCE_DATE, activeRecordId: null, ...state};
+  const viewState = {unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, ...state};
   return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(viewState) : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
 }
 
@@ -500,7 +514,7 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof document !== 'undefined') {
   reloadSavedRecords(window.localStorage);
   window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle};
-  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null};
+  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1};
   const app = document.getElementById('app');
   function fitDashboard() {
     if (state.screen === 'dashboard') {
@@ -544,6 +558,18 @@ if (typeof document !== 'undefined') {
       document.getElementById('theme-toggle').focus({preventScroll: true});
       return;
     }
+    const summaryFilter = event.target.closest('[data-summary-filter]');
+    if (summaryFilter) {
+      state = transition(state, {type: 'set-filter', filter: summaryFilter.dataset.summaryFilter});
+      paint();
+      return;
+    }
+    const pageAction = event.target.closest('[data-page-action]');
+    if (pageAction && !pageAction.disabled) {
+      state = transition(state, {type: 'set-page', page: state.page + (pageAction.dataset.pageAction === 'next' ? 1 : -1)});
+      paint();
+      return;
+    }
     const dialog = event.target.closest('.record-dialog');
     const action = event.target.closest('[data-action]')?.dataset.action;
     if (dialog && action === 'modify') {
@@ -566,6 +592,7 @@ if (typeof document !== 'undefined') {
         deployed: dialog.querySelector('[name="deployed"]').value,
         reason: dialog.querySelector('[name="reason"]').value,
       }, window.localStorage);
+      state = {...state, page: 1};
       paint();
       return;
     }
@@ -582,6 +609,13 @@ if (typeof document !== 'undefined') {
   app.addEventListener('input', event => {
     if (event.target.matches('.record-dialog [name="discoveredDate"]') && /^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) {
       event.target.previousElementSibling.textContent = formatDate(event.target.value);
+    }
+  });
+  app.addEventListener('keydown', event => {
+    const summaryFilter = event.target.closest('[data-summary-filter]');
+    if (summaryFilter && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      summaryFilter.click();
     }
   });
   app.addEventListener('change', event => {
