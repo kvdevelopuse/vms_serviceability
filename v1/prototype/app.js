@@ -129,6 +129,38 @@ function aggregateFor(unit = 'All', screen = 'all') {
   return {available, mission, unavailable, total: records.length, percent: records.length ? Math.round(available / records.length * 100) : 0};
 }
 
+function percentage(value, total) {
+  return total ? Math.round(value / total * 100) : 0;
+}
+
+function displayData(unit, screen) {
+  const aggregate = aggregateFor(unit, screen);
+  return {
+    ...aggregate,
+    title: fleet[screen].title,
+    totalLabel: `${aggregate.available} / ${aggregate.total}`,
+    percentLabel: `${aggregate.percent}%`,
+    missionPercent: percentage(aggregate.mission, aggregate.total),
+    unavailablePercent: percentage(aggregate.unavailable, aggregate.total),
+  };
+}
+
+function unitOptions(selected) {
+  return units.map(unit => `<option value="${unit}"${unit === selected ? ' selected' : ''}>${unit}</option>`).join('');
+}
+
+function unitControl(id, selected, disabled = false) {
+  return `<label class="unit-control" for="${id}"><span>Unit:</span><select id="${id}"${disabled ? ' disabled' : ''}>${unitOptions(selected)}</select></label>`;
+}
+
+function formatDate(date) {
+  const [year, month, day] = date.split('-').map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day));
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${weekdays[value.getUTCDay()]}, ${String(day).padStart(2, '0')} ${months[month - 1]} ${year}\u00a0 10:30 AM`;
+}
+
 function icon(name) {
   const symbols = {car:'▰', grid:'▦', arrow:'→', back:'❮', down:'⌄', check:'✓', wheel:'◎', wrench:'🔧', bars:'▂▅▇', pin:'♧', search:'⌕', filters:'↟', calendar:'▦', moon:'◐', sun:'◐', close:'×'};
   return `<span class="icon icon-${name}" aria-hidden="true">${symbols[name] || ''}</span>`;
@@ -161,16 +193,17 @@ function transition(state, action) {
   return state;
 }
 
-function header(screen, theme) {
+function header(screen, state) {
   const dashboard = screen === 'dashboard';
   return `<header class="page-header ${dashboard ? 'dashboard-header' : 'detail-header'}">
     <div class="heading-group">${dashboard ? '' : '<a class="back-button" href="#dashboard" aria-label="Back to dashboard">' + icon('back') + '</a>'}
-      <h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
+      <div class="heading-stack"><h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
+      ${dashboard ? unitControl('unit-filter', state.unit) : unitControl('detail-unit', state.unit, true)}</div>
     </div>
     <div class="header-tools">
-      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode" aria-pressed="${theme === 'dark'}">${icon(theme === 'light' ? 'moon' : 'sun')}<span>${theme === 'light' ? 'Dark' : 'Light'} Mode</span></button>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to ${state.theme === 'light' ? 'Dark' : 'Light'} Mode" aria-pressed="${state.theme === 'dark'}">${icon(state.theme === 'light' ? 'moon' : 'sun')}<span>${state.theme === 'light' ? 'Dark' : 'Light'} Mode</span></button>
       <div class="identity"><div class="person"><span class="avatar" aria-hidden="true">JD</span><strong>John Doe</strong>${icon('down')}</div>
-      <div class="date">${icon('calendar')}<span>Tue, 22 Oct 2026&nbsp; 10:30 AM</span></div></div>
+      ${dashboard ? `<label class="date date-picker" for="dashboard-date">${icon('calendar')}<input id="dashboard-date" type="date" value="${state.date}" aria-label="Dashboard date"></label>` : `<div class="date" data-date="${state.date}">${icon('calendar')}<span>${formatDate(state.date)}</span></div>`}</div>
     </div>
   </header>`;
 }
@@ -181,12 +214,17 @@ function vehicleArt(kind) {
   return `<span class="vehicle-art vehicle-${kind}" role="img" aria-label="${kind === 'all' ? 'Fleet of vehicles' : kind === 'people-movers' ? 'People mover' : kind === 'sedan' ? 'Sedan' : 'SUV'}">${vehicles.map(vehicle => `<img class="art-${vehicle}" src="assets/vehicle-${vehicle}.png" alt="" draggable="false">`).join('')}</span>`;
 }
 
-function dashboard() {
-  const cards = Object.entries(fleet).map(([key, data]) => `<article class="category-card category-${key}">
-      <div class="category-numbers"><div><strong class="service-percent">${data.percent}</strong></div><div class="category-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
+function dashboard(state) {
+  const cards = Object.keys(fleet).map(key => {
+    const data = displayData(state.unit, key);
+    return `<article class="category-card category-${key}" style="--serviceability:${data.percent}%">
+      <div class="category-numbers"><div><strong class="service-percent">${data.percentLabel}</strong></div><div class="category-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
       ${vehicleArt(key)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
-    </article>`).join('');
+    </article>`;
+  }).join('');
+  const overall = displayData(state.unit, 'all');
+  const missionEnd = overall.percent + overall.missionPercent;
   return `<section class="category-grid" aria-label="Vehicle categories">${cards}</section>
     <section class="overview" aria-labelledby="overview-title">
       <div class="overview-heading">${icon('bars')}<div><h2 id="overview-title">Fleet Overview</h2><p>Serviceability across all vehicle types</p></div></div>
@@ -194,13 +232,13 @@ function dashboard() {
         <section class="overview-panel trend-panel" aria-labelledby="trend-title"><div class="panel-heading"><h3 id="trend-title">Serviceability Trend</h3><span class="period" aria-label="Trend period: Last 30 Days">Last 30 Days ${icon('down')}</span></div>
           ${trendChart()}
         </section>
-        <section class="overview-panel status-panel" aria-labelledby="status-title"><h3 id="status-title">Vehicles by Status</h3><div class="status-breakdown"><div class="donut" role="img" aria-label="120 total vehicles: 84 available, 24 on mission, 12 not available"><div><strong>120</strong><span>Total Vehicles</span></div></div><dl class="status-legend">
-          <div><dt><i class="legend-dot available-dot"></i>Available</dt><dd>84</dd><dd>70%</dd></div><div><dt><i class="legend-dot mission-dot"></i>On Mission</dt><dd>24</dd><dd>20%</dd></div><div><dt><i class="legend-dot unavailable-dot"></i>Not Available</dt><dd>12</dd><dd>10%</dd></div>
+        <section class="overview-panel status-panel" aria-labelledby="status-title"><h3 id="status-title">Vehicles by Status</h3><div class="status-breakdown"><div class="donut" style="--available:${overall.percent}%;--mission-end:${missionEnd}%" role="img" aria-label="${overall.total} total vehicles: ${overall.available} available, ${overall.mission} on mission, ${overall.unavailable} not available"><div><strong>${overall.total}</strong><span>Total Vehicles</span></div></div><dl class="status-legend">
+          <div><dt><i class="legend-dot available-dot"></i>Available</dt><dd>${overall.available}</dd><dd>${overall.percent}%</dd></div><div><dt><i class="legend-dot mission-dot"></i>On Mission</dt><dd>${overall.mission}</dd><dd>${overall.missionPercent}%</dd></div><div><dt><i class="legend-dot unavailable-dot"></i>Not Available</dt><dd>${overall.unavailable}</dd><dd>${overall.unavailablePercent}%</dd></div>
         </dl></div></section>
         <section class="overview-panel insights-panel" aria-labelledby="insights-title"><h3 id="insights-title">${icon('pin')}Key Insights</h3>
-          <div class="insight"><span class="status-icon available-icon">${icon('check')}</span><div><strong>Serviceability at 70%</strong><p>84 of 120 vehicles available</p></div></div>
-          <div class="insight"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>24 vehicles on mission</strong><p>20% of total fleet</p></div></div>
-          <div class="insight"><span class="status-icon unavailable-icon">${icon('close')}</span><div><strong>12 vehicles not available</strong><p>10% of total fleet</p></div></div>
+          <div class="insight"><span class="status-icon available-icon">${icon('check')}</span><div><strong>Serviceability at ${overall.percent}%</strong><p>${overall.available} of ${overall.total} vehicles available</p></div></div>
+          <div class="insight"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${overall.mission} vehicles on mission</strong><p>${overall.missionPercent}% of total fleet</p></div></div>
+          <div class="insight"><span class="status-icon unavailable-icon">${icon('close')}</span><div><strong>${overall.unavailable} vehicles not available</strong><p>${overall.unavailablePercent}% of total fleet</p></div></div>
         </section>
       </div>
     </section>`;
@@ -219,15 +257,15 @@ function trendChart() {
   </svg>`;
 }
 
-function summary(screen) {
-  const data = fleet[screen];
+function summary(screen, state) {
+  const data = displayData(state.unit, screen);
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
-    <div class="summary-main"><div class="summary-percent"><strong>${data.percent}</strong></div>
+    <div class="summary-main"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
-    <div class="summary-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
-    <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.availablePercent || data.percent}</b></div>
-    <div class="summary-stat mission-stat"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}</b></div>
-    <div class="summary-stat unavailable-stat"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}</b></div>
+    <div class="summary-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
+    <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.percent}%</b></div>
+    <div class="summary-stat mission-stat"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
+    <div class="summary-stat unavailable-stat"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
   </section>`;
 }
 
@@ -239,20 +277,39 @@ function toolbar() {
   </div>`;
 }
 
-function vehicleTable(screen) {
-  const data = fleet[screen];
-  const rows = data.rows.map((row, index) => {
-    const [type, plate, model, year, status, time, assignment] = row;
-    const statusClass = status === 'Available' ? 'available' : status === 'On Mission' ? 'mission' : 'unavailable';
-    return `<tr data-plate="${plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + type + '</td>' : ''}<td>${plate}</td><td>${model}</td><td>${year}</td><td><span class="status-badge ${statusClass}"><i></i>${status}</span></td><td>22 Oct 2026 ${time}</td><td>${assignment}</td><td><span class="row-menu" aria-hidden="true">⋮</span></td></tr>`;
+function vehicleTable(screen, state) {
+  const matchingRecords = recordsFor(state.unit, screen);
+  const rows = matchingRecords.slice(0, 10).map((record, index) => {
+    const statusClass = record.status === 'Available' ? 'available' : record.status === 'On Mission' ? 'mission' : 'unavailable';
+    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>22 Oct 2026 ${record.time}</td><td>${record.assignment}</td></tr>`;
   }).join('');
-  return `<div class="table-scroll" tabindex="0" role="region" aria-label="${data.title} vehicle grid"><table><caption class="visually-hidden">${data.title}: visible records from the supplied reference</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th><th scope="col">Status</th><th scope="col">Last Updated</th><th scope="col">Current Assignment</th><th scope="col">Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="table-footer"><p>${data.footer}</p><div class="pagination" role="img" aria-label="Reference pagination, page 1 selected; additional page records not supplied"><span class="page-arrow">${icon('back')}</span><span class="page-number current">1</span>${Array.from({length: data.pages - 1}, (_, i) => '<span class="page-number">' + (i + 2) + '</span>').join('')}<span class="page-arrow next-page">${icon('back')}</span><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
+  const title = fleet[screen].title;
+  const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
+  const categoryLabel = screen === 'all' ? 'vehicles' : `${title.toLowerCase()} vehicles`;
+  return `<div class="table-scroll" tabindex="0" role="region" aria-label="${title} vehicle grid"><table><caption class="visually-hidden">${title}: first page of fixed prototype records</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th><th scope="col">Status</th><th scope="col">Last Updated</th><th scope="col">Current Assignment</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-footer"><p>Showing ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" role="img" aria-label="Reference pagination, page 1 selected"><span class="page-arrow">${icon('back')}</span><span class="page-number current">1</span>${Array.from({length: pages - 1}, (_, i) => '<span class="page-number">' + (i + 2) + '</span>').join('')}<span class="page-arrow next-page">${icon('back')}</span><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
+}
+
+function recordDialog(state) {
+  if (!state.activeRecordId) return '';
+  const record = vehicleRecords.find(item => item.id === state.activeRecordId);
+  if (!record) return '';
+  const selectedStatus = record.status === 'Available' ? 'Serviceable' : 'Non-Serviceable';
+  return `<dialog class="record-dialog" aria-label="Vehicle record details" data-record-id="${record.id}">
+    <div class="dialog-fields">
+      <label>Status:<select>${['Serviceable', 'Non-Serviceable'].map(value => `<option${value === selectedStatus ? ' selected' : ''}>${value}</option>`).join('')}</select></label>
+      <label>Discovered Date:<input type="date" value="${state.date}"></label>
+      <label>Location:<select><option>Inside Country</option><option>Outside Country</option></select></label>
+      <label>Deployed:<select><option>Yes</option><option>No</option></select></label>
+      <label>Reason for Non-Serviceability:<textarea rows="5"></textarea></label>
+    </div>
+  </dialog>`;
 }
 
 function renderScreen(state) {
   const screen = Object.hasOwn(fleet, state.screen) ? state.screen : 'dashboard';
-  return header(screen, state.theme) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard() : summary(screen) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen) + '</section>'}</main>`;
+  const viewState = {unit: 'All', date: '2026-10-22', activeRecordId: null, ...state};
+  return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(viewState) : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
 }
 
 function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeight) {
@@ -265,7 +322,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 if (typeof document !== 'undefined') {
   window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, aggregateFor, recordsFor};
-  let state = {screen: screenFromHash(location.hash), theme: 'light'};
+  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null};
   const app = document.getElementById('app');
   function fitDashboard() {
     if (state.screen === 'dashboard') {
@@ -281,6 +338,21 @@ if (typeof document !== 'undefined') {
     document.title = `${state.screen === 'dashboard' ? 'Vehicle Serviceability' : fleet[state.screen].title} | Vehicle Serviceability Prototype`;
     app.innerHTML = renderScreen(state);
     fitDashboard();
+    const dialog = app.querySelector('.record-dialog');
+    if (dialog) {
+      dialog.showModal();
+      dialog.addEventListener('close', () => {
+        if (state.activeRecordId) {
+          state = transition(state, {type: 'close-record'});
+          paint();
+        }
+      }, {once: true});
+      dialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        state = transition(state, {type: 'close-record'});
+        paint();
+      }, {once: true});
+    }
     if (focusHeading) {
       app.querySelector('h1').focus({preventScroll: true});
       window.scrollTo(0, 0);
@@ -291,6 +363,31 @@ if (typeof document !== 'undefined') {
       state = transition(state, {type: 'toggle-theme'});
       paint();
       document.getElementById('theme-toggle').focus({preventScroll: true});
+      return;
+    }
+    const dialog = event.target.closest('.record-dialog');
+    if (dialog && event.target === dialog) {
+      const bounds = dialog.getBoundingClientRect();
+      const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+      if (outside) dialog.close();
+    }
+  });
+  app.addEventListener('change', event => {
+    if (event.target.matches('#unit-filter')) {
+      state = transition(state, {type: 'set-unit', unit: event.target.value});
+      paint();
+      document.getElementById('unit-filter').focus({preventScroll: true});
+    } else if (event.target.matches('#dashboard-date')) {
+      state = transition(state, {type: 'set-date', date: event.target.value});
+      paint();
+      document.getElementById('dashboard-date').focus({preventScroll: true});
+    }
+  });
+  app.addEventListener('dblclick', event => {
+    const row = event.target.closest('tr[data-record-id]');
+    if (row) {
+      state = transition(state, {type: 'open-record', recordId: row.dataset.recordId});
+      paint();
     }
   });
   window.addEventListener('hashchange', () => {
