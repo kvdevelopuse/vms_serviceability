@@ -1,5 +1,7 @@
 # Replacement reference update
 
+Subsequent detail correction: all four detail summary cards now reuse the landing-page vehicle artwork, centered between Serviceability and Available / Total in both themes. This supersedes the earlier removal of detail artwork described below.
+
 Subsequent dashboard correction: the user requested clear centered vehicle images and no dashboard scrollbar, with every displayed value preserved. Standalone transparent vehicle images now replace the screenshot crops. The dashboard fits its full content to the viewport and recalculates on resize; detail views retain scrolling. `tests/fixtures/displayed-text-sha256.json` captures the pre-change text of all ten states and verifies it remains unchanged. Asset sources and extraction prompts are recorded in `prototype/assets/IMAGE_SOURCES.txt`. The paragraphs below describe the preceding reference-refresh revision.
 
 23 October 2026. This update records the user's instruction to redo the existing prototype from the replacement images, remove the Fleet Management heading and displayed Available vehicles / Total vehicles × 100 calculation, and push both repositories.

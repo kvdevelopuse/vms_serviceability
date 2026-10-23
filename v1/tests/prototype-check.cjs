@@ -32,10 +32,14 @@ for (const theme of ['light', 'dark']) {
     assert.ok(html.includes(total), `${screen}: literal total`);
     assert.ok(html.includes('<span>Available / Total</span>'), `${screen}: summary ratio label retained`);
     assert.ok(html.includes(plate), `${screen}: source records`);
-    for (const image of html.matchAll(/<img src="([^"]+)"/g)) {
+    for (const image of html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)) {
       assert.ok(fs.existsSync(path.join(root, image[1])), `illustration exists: ${image[1]}`);
     }
-    assert.ok(!html.includes('vehicle-art'), `${screen}: updated details have no vehicle illustrations`);
+    const summary = html.split('<div class="summary-stat')[0];
+    const artwork = summary.match(/<span class="vehicle-art[^]*?<\/span>/)?.[0];
+    const landingArtwork = renderScreen({screen: 'dashboard', theme}).match(/<span class="vehicle-art[^]*?<\/span>/g);
+    assert.ok(artwork && landingArtwork.includes(artwork), `${screen}: same vehicle artwork as landing page`);
+    assert.ok(summary.indexOf('summary-percent') < summary.indexOf(artwork) && summary.indexOf(artwork) < summary.indexOf('summary-total'), `${screen}: vehicle sits between serviceability and available total`);
     assert.ok(html.includes('<th scope="col">Last Updated</th>'), `${screen}: current column label`);
     assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 9 : 8, `${screen}: only current reference columns`);
     assert.equal((html.match(/<tr data-plate=/g) || []).length, count, `${screen}: visible rows only`);
@@ -81,4 +85,4 @@ for (const match of entry.matchAll(/(?:src|href)="([^"#]+)"/g)) {
   assert.ok(!/^https?:\/\//.test(match[1]), 'no remote runtime dependencies');
   assert.ok(fs.existsSync(path.join(root, match[1])), `local dependency exists: ${match[1]}`);
 }
-console.log('PASS: 10 view states; 8 category journeys; theme switches and returns; literal rows; route fallback; local entry dependencies.');
+console.log('PASS: 10 view states; 8 category journeys; centered detail artwork order and shared assets; theme switches and returns; literal rows; route fallback; local entry dependencies.');

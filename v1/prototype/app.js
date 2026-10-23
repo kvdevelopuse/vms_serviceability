@@ -152,6 +152,7 @@ function summary(screen) {
   const data = fleet[screen];
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
     <div class="summary-main"><div class="summary-percent"><strong>${data.percent}</strong><span>Serviceability</span></div>
+    ${vehicleArt(screen)}
     <div class="summary-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
     <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.availablePercent || data.percent}</b></div>
     <div class="summary-stat mission-stat"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}</b></div>

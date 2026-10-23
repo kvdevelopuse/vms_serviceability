@@ -19,7 +19,8 @@ UPDATED REFERENCES
 The latest same-named images govern the layout, visible rows and values.
 The Fleet Management heading and displayed serviceability calculation have
 been removed as requested. Available / Total summary values are retained.
-All detail views use the new uniform layout without vehicle illustrations.
+All detail views reuse the landing-page vehicle images, centered between
+Serviceability and Available / Total in the main summary card.
 The SUV Dark source is now readable and was inspected directly.
 
 Only supplied records appear. Literal differences between categories and
