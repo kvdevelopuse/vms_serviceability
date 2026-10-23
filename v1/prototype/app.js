@@ -153,12 +153,13 @@ function buildVehicleRecords() {
 }
 
 function addRecordDetails(record, index, date) {
+  const reference = date === REFERENCE_DATE;
   return {
     ...record,
     discoveredDate: date,
-    location: index % 5 === 0 ? 'Outside Country' : 'Inside Country',
-    deployed: record.status === 'Not Available' ? 'No' : 'Yes',
-    reason: record.status === 'Not Available' ? record.assignment : '',
+    location: reference || index % 5 !== 0 ? 'Inside Country' : 'Outside Country',
+    deployed: reference || record.status !== 'Not Available' ? 'Yes' : 'No',
+    reason: reference || record.status !== 'Not Available' ? '' : record.assignment,
   };
 }
 

@@ -54,6 +54,7 @@
         if (!originalCamry || originalCamry.model !== 'Toyota Camry' || originalCamry.year !== '2024' || originalCamry.status !== 'Available' || originalCamry.time !== '09:15') {
           throw new Error('AB-1234 legacy values were not retained');
         }
+        if (api.vehicleRecords.some(record => record.discoveredDate !== '2026-10-22' || record.location !== 'Inside Country' || record.deployed !== 'Yes' || record.reason !== '')) throw new Error('reference popup defaults were not preserved');
         for (const [unit, screens] of Object.entries(expectedAllocations)) {
           for (const [screen, expected] of Object.entries(screens)) {
             const aggregate = api.aggregateFor(unit, screen, '2026-10-22');
