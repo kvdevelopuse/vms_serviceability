@@ -16,6 +16,8 @@ dd-MMM-yyyy while the native date selectors remain available.
 Open All Vehicles, Sedan, SUV or People Movers with the circular arrow;
 the rest of each card is not a link. The selected Unit and date remain set
 on detail pages. Use the circular Back control to return to the dashboard.
+The detail Unit is shown in a disabled, theme-aware text field. Choosing
+another dashboard Unit updates this display and the existing Unit filter.
 Dark Mode / Light Mode switches the current screen and remains selected
 while navigating. Reload restores All, 22-Oct-2026 and Light Mode.
 
@@ -47,12 +49,16 @@ centered with their complete silhouettes visible. The All Vehicles card
 combines the same three vehicle assets. Sources are in assets/IMAGE_SOURCES.txt.
 The dashboard fits its complete content to the viewport without scrollbars;
 card sizes are compact and the layout refits when the window is resized.
-Detail pages also stay within the viewport. The vehicle grid scrolls
+Detail pages stay within the viewport where space permits. Short mobile
+landscape views scroll vertically so the vehicle grid remains reachable.
+The vehicle grid scrolls
 vertically and horizontally while its column headings, summary cards,
 filters and pagination remain visible. Focus the grid for keyboard scrolling.
 The trend is a fixed illustration traced from the new reference. Card
-backgrounds split horizontally at the displayed serviceability percentage,
-with green for serviceable and red for the remainder. Fleet Overview is kept
+backgrounds use deeper premium surfaces and restrained shadows. Dashboard
+cards and detail Serviceability split horizontally at the displayed
+serviceability percentage, with sage for serviceable and warm rose for the
+remainder. Fleet Overview is kept
 clear of the complete, uncropped vehicle artwork.
 
 Double-click a detail row to open the five-field record popup in View Mode.

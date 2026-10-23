@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..', 'prototype');
+const reactRoot = path.join(__dirname, '..', 'react');
 const {
   transition, renderScreen, screenFromHash, dashboardScale,
   vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor,
@@ -79,7 +80,7 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
 
 for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   const html = renderScreen({screen, theme: 'dark', unit: 'Unit C', date: '2026-10-21', activeRecordId: null});
-  assert.match(html, /id="detail-unit" disabled/);
+  assert.match(html, /id="detail-unit" type="text" value="Unit C" disabled/);
   assert.match(html, /data-date="2026-10-21"/);
   assert.match(html, /21-Oct-2026/);
   assert.equal((html.match(/class="[^"]*percentage-card[^"]*"/g) || []).length, 1);
@@ -136,4 +137,23 @@ for (const match of entry.matchAll(/(?:src|href)="([^"#]+)"/g)) {
   assert.ok(fs.existsSync(path.join(root, match[1])), `local dependency exists: ${match[1]}`);
 }
 
-console.log('PASS: three reconciled date snapshots; formatted dates; retained state; editable dialog contract; proportional detail cards; local dependencies.');
+const reactSource = fs.readFileSync(path.join(reactRoot, 'VehicleServiceabilityComponents.jsx'), 'utf8');
+const reactStyles = fs.readFileSync(path.join(reactRoot, 'vehicle-serviceability.css'), 'utf8');
+const reactReadme = fs.readFileSync(path.join(reactRoot, 'README.md'), 'utf8');
+for (const component of ['UnitTextField', 'FleetCard', 'DetailSummaryCards']) {
+  assert.match(reactSource, new RegExp(`export function ${component}\\b`), `${component} React export`);
+}
+assert.doesNotMatch(reactSource, /\b(?:fetch|localStorage|sessionStorage|axios|react-router|window\.)\b/, 'React components avoid ERP architecture dependencies');
+assert.match(reactSource, /export function DetailSummaryCards\(\{[\s\S]*?serviceability,/);
+assert.match(reactSource, /serviceability == null/, 'explicit displayed serviceability has a calculated fallback');
+assert.match(reactSource, /availablePercentage == null/, 'explicit displayed status percentages have calculated fallbacks');
+assert.doesNotMatch(reactSource, /id = ['"]detail-unit['"]/, 'Unit fields do not share a default ID');
+assert.match(reactSource, /\.\.\.\(id \? \{id\} : \{\}\)/, 'Unit field applies an ID only when supplied');
+assert.match(reactSource, /aria-disabled="true"/, 'React Unit field is disabled');
+assert.match(reactStyles, /\.vms-serviceability/);
+assert.match(reactStyles, /\[data-theme="dark"\]/);
+assert.match(reactReadme, /ERP integration inputs/);
+assert.match(reactReadme, /disabled Unit text input/);
+assert.doesNotMatch(reactReadme, /onUnitTextChange/);
+
+console.log('PASS: reconciled snapshots; disabled Unit/dialog contracts; premium card surfaces; React integration; local dependencies.');

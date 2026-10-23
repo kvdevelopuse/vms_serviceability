@@ -318,8 +318,11 @@ function unitOptions(selected) {
   return units.map(unit => `<option value="${unit}"${unit === selected ? ' selected' : ''}>${unit}</option>`).join('');
 }
 
-function unitControl(id, selected, disabled = false) {
-  return `<label class="unit-control" for="${id}"><span>Unit:</span><select id="${id}"${disabled ? ' disabled' : ''}>${unitOptions(selected)}</select></label>`;
+function unitControl(id, selected, displayOnly = false) {
+  const control = displayOnly
+    ? `<input id="${id}" type="text" value="${escapeHtml(selected)}" disabled>`
+    : `<select id="${id}">${unitOptions(selected)}</select>`;
+  return `<label class="unit-control" for="${id}"><span>Unit:</span>${control}</label>`;
 }
 
 function formatDate(date) {

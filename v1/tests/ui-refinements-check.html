@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>UI refinement browser check</title>
+<link rel="stylesheet" href="../react/vehicle-serviceability.css">
 <body data-result="running">
   <pre id="result">RUNNING</pre>
   <iframe id="prototype" style="position:absolute;left:-10000px;top:0;width:1920px;height:1080px;border:0"></iframe>
@@ -36,6 +37,14 @@
       document.body.dataset.result = status.toLowerCase();
       document.getElementById('result').textContent = `${status}: ${detail}`;
     };
+    const contrastRatio = (foreground, background) => {
+      const luminance = color => {
+        const channels = (color.match(/[\d.]+/g) || []).slice(0, 3).map(value => Number(value) / 255).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+        return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+      };
+      const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+      return (values[0] + .05) / (values[1] + .05);
+    };
 
     const storageKey = 'vms-serviceability-record-edits-v1';
     const originalStoredEdits = localStorage.getItem(storageKey);
@@ -48,6 +57,49 @@
         const doc = frame.contentDocument;
         const api = frame.contentWindow.prototypeApi;
         if (!api) throw new Error('prototype API was not exposed');
+        const [reactSource, reactStyles, reactReadme] = await Promise.all([
+          fetch('../react/VehicleServiceabilityComponents.jsx').then(response => response.ok ? response.text() : Promise.reject(new Error('React component source was missing'))),
+          fetch('../react/vehicle-serviceability.css').then(response => response.ok ? response.text() : Promise.reject(new Error('React component styles were missing'))),
+          fetch('../react/README.md').then(response => response.ok ? response.text() : Promise.reject(new Error('React integration guide was missing'))),
+        ]);
+        for (const component of ['UnitTextField', 'FleetCard', 'DetailSummaryCards']) {
+          if (!reactSource.includes(`export function ${component}`)) throw new Error(`${component} React export was missing`);
+        }
+        if (/\b(?:fetch|localStorage|sessionStorage|axios|react-router|window\.)\b/.test(reactSource)) throw new Error('React components contained an ERP architecture dependency');
+        if (!reactStyles.includes('.vms-serviceability') || !reactStyles.includes('[data-theme="dark"]') || !reactReadme.includes('ERP integration inputs')) throw new Error('React styles or integration guidance were incomplete');
+        if (!/export function DetailSummaryCards\(\{[\s\S]*?serviceability,/.test(reactSource) || !reactSource.includes('serviceability == null') || !reactSource.includes('availablePercentage == null')) throw new Error('React detail summary did not support preserved displayed percentages');
+        if (reactSource.includes("id = 'detail-unit'") || !reactSource.includes("...(id ? {id} : {})")) throw new Error('React Unit field did not avoid duplicate default IDs');
+        if (!reactSource.includes('aria-disabled="true"') || reactReadme.includes('onUnitTextChange') || !reactReadme.includes('disabled Unit text input')) throw new Error('React Unit field was not a disabled display control');
+
+        const reactFrame = document.createElement('iframe');
+        reactFrame.style.cssText = 'position:absolute;left:-10000px;top:0;width:1920px;height:1000px;border:0';
+        const reactFrameLoaded = new Promise(resolve => reactFrame.addEventListener('load', resolve, {once: true}));
+        const reactStylesUrl = new URL('../react/vehicle-serviceability.css', location.href).href;
+        reactFrame.srcdoc = `<link rel="stylesheet" href="${reactStylesUrl}"><body></body>`;
+        document.body.append(reactFrame);
+        await reactFrameLoaded;
+        for (const width of [390, 740, 900]) {
+          const reactFixture = reactFrame.contentDocument.createElement('section');
+          reactFixture.className = 'vms-serviceability';
+          reactFixture.style.width = `${width}px`;
+          reactFixture.innerHTML = `<div class="vms-detail-summary">
+            <button class="vms-serviceability-card"><span class="vms-serviceability-card__percentage"><strong>62%</strong></span><span></span><span class="vms-serviceability-card__total"><strong>30 / 48</strong><small>Available / Total</small></span></button>
+            <button class="vms-summary-card vms-summary-card--available"><span class="vms-summary-card__icon">&#10003;</span><span><strong>30</strong><small>Available</small></span><b>62%</b></button>
+            <button class="vms-summary-card vms-summary-card--mission"><span class="vms-summary-card__icon">&#8594;</span><span><strong>11</strong><small>On Mission</small></span><b>23%</b></button>
+            <button class="vms-summary-card vms-summary-card--unavailable"><span class="vms-summary-card__icon">!</span><span><strong>7</strong><small>Not Available</small></span><b>15%</b></button>
+          </div>`;
+          reactFrame.contentDocument.body.append(reactFixture);
+          await delay(20);
+          for (const card of reactFixture.querySelectorAll('.vms-summary-card')) {
+            const cardBox = card.getBoundingClientRect();
+            for (const child of card.children) {
+              const childBox = child.getBoundingClientRect();
+              if (childBox.left < cardBox.left - 1 || childBox.right > cardBox.right + 1) throw new Error(`React status-card content overflowed a ${width}px integration boundary`);
+            }
+          }
+          reactFixture.remove();
+        }
+        reactFrame.remove();
         if (api.STORAGE_KEY !== 'vms-serviceability-record-edits-v1') throw new Error(`storage key was ${JSON.stringify(api.STORAGE_KEY)}`);
         frame.contentWindow.localStorage.removeItem(api.STORAGE_KEY);
         api.reloadSavedRecords(frame.contentWindow.localStorage);
@@ -157,6 +209,10 @@
         if (JSON.stringify(cardStyles.map(style => style.getPropertyValue('--serviceability').trim())) !== JSON.stringify(['70%', '75%', '63%', '75%'])) {
           throw new Error('category gradient splits did not match displayed percentages');
         }
+        if (cardStyles.some(style => style.boxShadow === 'none' || Number.parseFloat(style.borderRadius) < 14)) throw new Error('dashboard cards did not use the refined professional surface treatment');
+        const lightRootStyle = getComputedStyle(doc.documentElement);
+        if (lightRootStyle.getPropertyValue('--card-serviceable').trim() !== '#d8e9df' || lightRootStyle.getPropertyValue('--card-nonserviceable').trim() !== '#f2dde2') throw new Error('Light Mode cards did not use the darker premium palette');
+        if (JSON.stringify(['--card-available-surface', '--card-mission-surface', '--card-unavailable-surface'].map(token => lightRootStyle.getPropertyValue(token).trim())) !== JSON.stringify(['#e2efe8', '#e1eaf3', '#f4e1e5'])) throw new Error('Light Mode status cards did not use the darker premium palette');
         unitSelect.value = 'Unit C';
         unitSelect.dispatchEvent(new Event('change', {bubbles: true}));
         await delay(100);
@@ -169,7 +225,18 @@
         doc.querySelector('.category-suv .round-arrow').click();
         await delay(100);
         const detailUnit = doc.getElementById('detail-unit');
-        if (!detailUnit || !detailUnit.disabled || detailUnit.value !== 'Unit C') throw new Error('detail Unit was not retained and disabled');
+        if (!detailUnit || detailUnit.tagName !== 'INPUT' || detailUnit.type !== 'text' || !detailUnit.disabled || detailUnit.value !== 'Unit C') throw new Error('detail Unit was not retained in a disabled text box');
+        const disabledUnitStyle = getComputedStyle(detailUnit);
+        if (disabledUnitStyle.cursor !== 'not-allowed' || disabledUnitStyle.backgroundColor !== 'rgb(227, 231, 236)') throw new Error('detail Unit did not have a distinct disabled appearance');
+        doc.getElementById('theme-toggle').click();
+        await delay(75);
+        if (!doc.getElementById('detail-unit').disabled || doc.getElementById('detail-unit').value !== 'Unit C' || doc.querySelector('.summary-percent').textContent.trim() !== '55%') throw new Error('disabled detail Unit did not survive repaint with fixed data');
+        const darkRootStyle = getComputedStyle(doc.documentElement);
+        if (darkRootStyle.getPropertyValue('--card-serviceable').trim() !== '#12322d' || darkRootStyle.getPropertyValue('--card-nonserviceable').trim() !== '#35242a') throw new Error('Dark Mode cards did not use the darker premium palette');
+        if (JSON.stringify(['--card-available-surface', '--card-mission-surface', '--card-unavailable-surface'].map(token => darkRootStyle.getPropertyValue(token).trim())) !== JSON.stringify(['#0d2925', '#0d2534', '#312127'])) throw new Error('Dark Mode status cards did not use the darker premium palette');
+        if (getComputedStyle(doc.getElementById('detail-unit')).backgroundColor !== 'rgb(27, 48, 58)') throw new Error('Dark Mode detail Unit did not keep its disabled appearance');
+        doc.getElementById('theme-toggle').click();
+        await delay(75);
         if (!doc.querySelector('.date[data-date="2026-10-21"]') || doc.querySelector('.date[data-date="2026-10-21"] span:last-child').textContent.trim() !== '21-Oct-2026') throw new Error('selected date was not retained or formatted on detail page');
         if (doc.querySelector('.summary-percent').textContent.trim() !== '55%' || !doc.querySelector('.summary-main').textContent.includes('6 / 11')) {
           throw new Error('Unit C SUV detail aggregate did not match dashboard data');
@@ -178,7 +245,11 @@
         const detailSplits = detailCards.map(card => getComputedStyle(card).getPropertyValue('--percentage').trim());
         if (detailCards.length !== 1 || !detailCards[0].classList.contains('summary-main') || JSON.stringify(detailSplits) !== JSON.stringify(['55%'])) throw new Error(`Serviceability-only percentage split was ${JSON.stringify(detailSplits)}`);
         if (detailCards.some(card => !getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('detail percentage card did not use a proportional gradient');
-        if ([...doc.querySelectorAll('.summary-stat')].some(card => getComputedStyle(card).backgroundImage.includes('linear-gradient') || getComputedStyle(card).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor)) throw new Error('non-Serviceability summary cards did not restore their original surface');
+        for (const card of doc.querySelectorAll('.summary-stat')) {
+          if (contrastRatio(getComputedStyle(card.querySelector('b')).color, getComputedStyle(card).backgroundColor) < 4.5) throw new Error('Light Mode status-card percentage contrast was below 4.5:1');
+        }
+        const statusCardStyles = [...doc.querySelectorAll('.summary-stat')].map(card => getComputedStyle(card));
+        if (statusCardStyles.some(style => style.backgroundImage.includes('linear-gradient') || style.boxShadow === 'none') || new Set(statusCardStyles.map(style => style.backgroundColor)).size !== 3) throw new Error('non-Serviceability summary cards did not use distinct solid professional surfaces');
         if (api.percentageStyle(0) !== '--percentage:0%' || api.percentageStyle(100) !== '--percentage:100%') throw new Error('0% and 100% gradient endpoints were not supported');
         if (![...doc.querySelectorAll('tbody tr td:nth-last-child(2)')].every(cell => cell.textContent.trim().startsWith('21-Oct-2026'))) throw new Error('table dates did not use selected dd-MMM-yyyy date');
         if ([...doc.querySelectorAll('th')].some(cell => cell.textContent.trim() === 'Actions')) throw new Error('Actions column remained');
@@ -287,6 +358,8 @@
         dialog = doc.querySelector('dialog[open]');
         if (doc.documentElement.dataset.theme !== 'dark' || !dialog) throw new Error('dialog did not remain open in Dark Mode');
         if (!getComputedStyle(doc.querySelector('.summary-main')).backgroundImage.includes('linear-gradient') || [...doc.querySelectorAll('.summary-stat')].some(card => getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('Dark Mode did not keep the gradient exclusive to Serviceability');
+        const darkStatusStyles = [...doc.querySelectorAll('.summary-stat')].map(card => getComputedStyle(card));
+        if (darkStatusStyles.some(style => style.boxShadow === 'none') || new Set(darkStatusStyles.map(style => style.backgroundColor)).size !== 3) throw new Error('Dark Mode status cards did not keep distinct professional surfaces');
         if (getComputedStyle(dialog).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor) {
           throw new Error('Dark Mode dialog did not match the detail surface');
         }
@@ -359,6 +432,7 @@
           if (frame.contentWindow.location.hash !== `#${screen}` || doc.querySelector('h1').textContent !== expectedTitles[screen]) {
             throw new Error(`${screen} arrow did not open its detail page`);
           }
+          if (!doc.getElementById('detail-unit').disabled || doc.getElementById('detail-unit').value !== 'All') throw new Error('disabled detail Unit did not match the dashboard Unit');
         }
         for (const [screen, percentage] of Object.entries(expectedPercentages)) {
           frame.contentWindow.location.hash = screen;
@@ -387,7 +461,7 @@
         const preservedAssignment = noOpUnavailable.assignment;
         const noOpResult = api.saveRecord('2026-10-22', noOpUnavailable.id, {status: 'Non-Serviceable', discoveredDate: noOpUnavailable.discoveredDate, location: 'Outside Country', deployed: 'No', reason: ''});
         if (noOpResult.assignment !== preservedAssignment || noOpResult.location !== 'Outside Country' || noOpResult.deployed !== 'No' || noOpUnavailable.location !== 'Inside Country') throw new Error('unchanged status/reason Save did not preserve assignment and source immutability');
-        report('PASS', 'date-specific localStorage edits; reconciled records; summary filters; functional pagination; Serviceability-only gradient; themed editable row dialog');
+        report('PASS', 'premium card surfaces; disabled detail Unit; React integration contract; reconciled records; filters, pagination and persisted edits');
       } catch (error) {
         report('FAIL', error.message);
       } finally {
