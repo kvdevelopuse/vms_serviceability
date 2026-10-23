@@ -344,7 +344,9 @@ function trendChart() {
 
 function summary(screen, state) {
   const data = displayData(state.unit, screen, state.date);
-  const availablePercent = state.unit === 'All' && state.date === REFERENCE_DATE ? (fleet[screen].availablePercent || fleet[screen].percent) : data.percentLabel;
+  const baseline = fleet[screen];
+  const unchangedReference = state.unit === 'All' && state.date === REFERENCE_DATE && data.available === Number(baseline.available) && data.mission === Number(baseline.mission) && data.unavailable === Number(baseline.unavailable);
+  const availablePercent = unchangedReference ? (baseline.availablePercent || baseline.percent) : data.percentLabel;
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
     <div class="summary-main percentage-card" style="${percentageStyle(data.percent)}"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
@@ -367,7 +369,7 @@ function vehicleTable(screen, state) {
   const matchingRecords = recordsFor(state.unit, screen, state.date);
   const rows = matchingRecords.slice(0, 10).map((record, index) => {
     const statusClass = record.status === 'Available' ? 'available' : record.status === 'On Mission' ? 'mission' : 'unavailable';
-    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>${formatDate(state.date)} ${record.time}</td><td>${record.assignment}</td></tr>`;
+    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>${formatDate(state.date)} ${record.time}</td><td>${escapeHtml(record.assignment)}</td></tr>`;
   }).join('');
   const title = fleet[screen].title;
   const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));

@@ -271,6 +271,21 @@
           if (rendered !== percentage) throw new Error(`${screen} detail percentage was ${JSON.stringify(rendered)}`);
           if (screen === 'suv' && doc.querySelector('.available-stat b').textContent.trim() !== '62%') throw new Error('All/SUV Available percentage did not retain 62%');
         }
+        frame.contentWindow.location.hash = 'all';
+        await delay(100);
+        const referenceRow = doc.querySelector('tbody tr');
+        const referenceId = referenceRow.dataset.recordId;
+        referenceRow.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+        await delay(50);
+        dialog = doc.querySelector('dialog[open]');
+        dialog.querySelector('[data-action="modify"]').click();
+        dialog.querySelector('[name="status"]').value = 'Non-Serviceable';
+        dialog.querySelector('[name="reason"]').value = '<b id="review-marker">Brake check</b>';
+        dialog.querySelector('[data-action="save"]').click();
+        await delay(100);
+        if (doc.querySelector('.summary-percent').textContent.trim() !== '69%' || doc.querySelector('.available-stat b').textContent.trim() !== '69%' || getComputedStyle(doc.querySelector('.available-stat')).getPropertyValue('--percentage').trim() !== '69%') throw new Error('reference-date Save left the Available percentage or gradient frozen');
+        const updatedReferenceRow = doc.querySelector(`tr[data-record-id="${referenceId}"]`);
+        if (updatedReferenceRow.querySelector('#review-marker') || updatedReferenceRow.lastElementChild.textContent.trim() !== '<b id="review-marker">Brake check</b>') throw new Error('saved Reason was not rendered as plain text');
         report('PASS', 'three reconciled date snapshots; formatted dates; retained Unit/date; proportional dashboard/detail cards; themed editable row dialog');
       } catch (error) {
         report('FAIL', error.message);
