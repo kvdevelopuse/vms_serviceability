@@ -63,8 +63,10 @@
         const tabBRecord = secondApi.recordsByDate['2026-10-21'][1];
         api.saveRecord('2026-10-20', tabARecord.id, {status: 'Serviceable', discoveredDate: '2026-10-20', location: 'Inside Country', deployed: 'Yes', reason: 'Tab A'}, frame.contentWindow.localStorage);
         secondApi.saveRecord('2026-10-21', tabBRecord.id, {status: 'Non-Serviceable', discoveredDate: '2026-10-21', location: 'Outside Country', deployed: 'No', reason: 'Tab B'}, secondFrame.contentWindow.localStorage);
+        api.saveRecord('2026-10-20', tabARecord.id, {status: 'Non-Serviceable', discoveredDate: '2026-10-20', location: 'Outside Country', deployed: 'No', reason: 'Latest Tab A'}, frame.contentWindow.localStorage);
+        secondApi.saveRecord('2026-10-21', tabBRecord.id, {status: 'Serviceable', discoveredDate: '2026-10-21', location: 'Inside Country', deployed: 'Yes', reason: 'Latest Tab B'}, secondFrame.contentWindow.localStorage);
         const multiInstanceEdits = JSON.parse(frame.contentWindow.localStorage.getItem(api.STORAGE_KEY)).edits;
-        if (!multiInstanceEdits[`2026-10-20|${tabARecord.id}`] || !multiInstanceEdits[`2026-10-21|${tabBRecord.id}`]) throw new Error('a stale app instance overwrote edits saved by another instance');
+        if (multiInstanceEdits[`2026-10-20|${tabARecord.id}`]?.reason !== 'Latest Tab A' || multiInstanceEdits[`2026-10-21|${tabBRecord.id}`]?.reason !== 'Latest Tab B') throw new Error('a stale app instance overwrote newer edits saved by another instance');
         const reopenedFrame = document.createElement('iframe');
         reopenedFrame.style.cssText = secondFrame.style.cssText;
         const reopened = new Promise(resolve => reopenedFrame.addEventListener('load', resolve, {once: true}));
@@ -72,7 +74,7 @@
         document.body.append(reopenedFrame);
         await reopened;
         const reopenedApi = reopenedFrame.contentWindow.prototypeApi;
-        if (reopenedApi.getSavedRecord('2026-10-20', tabARecord.id)?.reason !== 'Tab A' || reopenedApi.getSavedRecord('2026-10-21', tabBRecord.id)?.reason !== 'Tab B') throw new Error('a reopened app did not rehydrate all stored edits');
+        if (reopenedApi.getSavedRecord('2026-10-20', tabARecord.id)?.reason !== 'Latest Tab A' || reopenedApi.getSavedRecord('2026-10-21', tabBRecord.id)?.reason !== 'Latest Tab B') throw new Error('a reopened app did not rehydrate all stored edits');
         frame.contentWindow.localStorage.removeItem(api.STORAGE_KEY);
         api.reloadSavedRecords(frame.contentWindow.localStorage);
         secondFrame.remove();

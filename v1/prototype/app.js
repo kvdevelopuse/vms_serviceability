@@ -231,10 +231,10 @@ function reloadSavedRecords(storage) {
   return savedRecordEdits;
 }
 
-function persistSavedRecords(storage) {
+function persistSavedRecord(storage, key, edit) {
   if (!storage) return;
   try {
-    savedRecordEdits = {...readSavedRecords(storage), ...savedRecordEdits};
+    savedRecordEdits = {...readSavedRecords(storage), [key]: edit};
     storage.setItem(STORAGE_KEY, JSON.stringify({version: 1, edits: savedRecordEdits}));
   } catch {
     // The prototype still works in-memory when browser storage is unavailable.
@@ -286,8 +286,9 @@ function saveRecord(date, recordId, values, storage = null) {
     operationalStatus: status,
     assignment,
   };
-  savedRecordEdits[savedRecordKey(date, recordId)] = edit;
-  persistSavedRecords(storage);
+  const key = savedRecordKey(date, recordId);
+  savedRecordEdits[key] = edit;
+  persistSavedRecord(storage, key, edit);
   return effectiveRecord(record, date);
 }
 
