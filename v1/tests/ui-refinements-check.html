@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>UI refinement browser check</title>
+<body data-result="running">
+  <pre id="result">RUNNING</pre>
+  <iframe id="prototype" src="../prototype/index.html" hidden></iframe>
+  <script>
+    const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+    const expectedPercentages = {all: '70%', sedan: '75%', suv: '63%', 'people-movers': '75%'};
+    const expectedTitles = {all: 'All Vehicles', sedan: 'Sedan', suv: 'SUV', 'people-movers': 'People Movers'};
+    const report = (status, detail) => {
+      document.body.dataset.result = status.toLowerCase();
+      document.getElementById('result').textContent = `${status}: ${detail}`;
+    };
+
+    document.getElementById('prototype').addEventListener('load', async event => {
+      const frame = event.currentTarget;
+      try {
+        await delay(100);
+        const doc = frame.contentDocument;
+        const dashboardPercentages = [...doc.querySelectorAll('.category-numbers > div:first-child')].map(node => node.textContent.trim());
+        const expectedDashboard = Object.values(expectedPercentages);
+        if (JSON.stringify(dashboardPercentages) !== JSON.stringify(expectedDashboard)) {
+          throw new Error(`dashboard percentages were ${JSON.stringify(dashboardPercentages)}`);
+        }
+        const backgrounds = [...doc.querySelectorAll('.category-card')].map(node => getComputedStyle(node).backgroundColor);
+        if (backgrounds.some(background => background !== 'rgb(255, 255, 255)')) {
+          throw new Error(`Light Mode card backgrounds were ${JSON.stringify(backgrounds)}`);
+        }
+        for (const screen of Object.keys(expectedPercentages)) {
+          frame.contentWindow.location.hash = 'dashboard';
+          await delay(100);
+          const card = doc.querySelector(`.category-${screen}`);
+          card.click();
+          await delay(100);
+          if (frame.contentWindow.location.hash !== '#dashboard') throw new Error(`${screen} card background navigated`);
+          for (const selector of ['h2', '.service-percent', '.vehicle-art']) {
+            card.querySelector(selector).click();
+            await delay(100);
+            if (frame.contentWindow.location.hash !== '#dashboard') throw new Error(`${screen} ${selector} navigated`);
+          }
+          card.querySelector('.round-arrow').click();
+          await delay(100);
+          if (frame.contentWindow.location.hash !== `#${screen}` || doc.querySelector('h1').textContent !== expectedTitles[screen]) {
+            throw new Error(`${screen} arrow did not open its detail page`);
+          }
+        }
+        for (const [screen, percentage] of Object.entries(expectedPercentages)) {
+          frame.contentWindow.location.hash = screen;
+          await delay(100);
+          const rendered = doc.querySelector('.summary-percent').textContent.trim();
+          if (rendered !== percentage) throw new Error(`${screen} detail percentage was ${JSON.stringify(rendered)}`);
+        }
+        report('PASS', 'arrow-only navigation, percentage labels, and Light Mode card backgrounds');
+      } catch (error) {
+        report('FAIL', error.message);
+      }
+    });
+  </script>
+</body>

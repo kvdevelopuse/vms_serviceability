@@ -12,7 +12,12 @@ for (const theme of ['light', 'dark']) for (const screen of ['dashboard','all','
   const text = renderScreen({screen,theme}).replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
   assert.equal(createHash('sha256').update(text).digest('hex'), displayedText[`${screen}/${theme}`], `${screen}/${theme}: every displayed value remains unchanged`);
 }
-for (const [contentWidth, contentHeight, width, height] of [[1920,1100,1920,1080],[1366,1250,1366,768],[1200,900,1200,600],[390,1600,390,844],[900,600,1920,1080]]) {
+for (const theme of ['light', 'dark']) {
+  assert.doesNotMatch(renderScreen({screen: 'dashboard', theme}), /class="service-percent">[^<]+<\/strong><span>Serviceability<\/span>/, `${theme}: dashboard percentages have no Serviceability label`);
+  for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
+    assert.doesNotMatch(renderScreen({screen, theme}), /class="summary-percent">[^]*?<span>Serviceability<\/span>/, `${theme}/${screen}: detail percentage has no Serviceability label`);
+  }
+}for (const [contentWidth, contentHeight, width, height] of [[1920,1100,1920,1080],[1366,1250,1366,768],[1200,900,1200,600],[390,1600,390,844],[900,600,1920,1080]]) {
   const scale = dashboardScale(contentWidth, contentHeight, width, height);
   assert.ok(contentWidth * scale <= width + .001 && contentHeight * scale <= height + .001, 'entire dashboard fits the viewport');
   assert.ok(scale > 0 && scale <= 1, 'no image upscaling');
@@ -50,7 +55,8 @@ for (const theme of ['light', 'dark']) {
   }
   const dashboard = renderScreen({screen: 'dashboard', theme});
   for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
-    assert.ok(dashboard.includes(`href="#${screen}"`), `dashboard links to ${screen}`);
+    assert.ok(dashboard.includes(`<a class="round-arrow" href="#${screen}"`), `dashboard arrow links to ${screen}`);
+    assert.ok(!dashboard.includes(`<a href="#${screen}" class="category-card`), `${screen} card is not a link`);
   }
   assert.ok(dashboard.includes('84 / 120'));
   assert.ok(dashboard.includes('63%'));

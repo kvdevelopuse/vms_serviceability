@@ -111,11 +111,11 @@ function vehicleArt(kind) {
 }
 
 function dashboard() {
-  const cards = Object.entries(fleet).map(([key, data]) => `<a href="#${key}" class="category-card category-${key}" aria-label="Open ${data.title}">
-      <div class="category-numbers"><div><strong class="service-percent">${data.percent}</strong><span>Serviceability</span></div><div class="category-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
+  const cards = Object.entries(fleet).map(([key, data]) => `<article class="category-card category-${key}">
+      <div class="category-numbers"><div><strong class="service-percent">${data.percent}</strong></div><div class="category-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
       ${vehicleArt(key)}
-      <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><span class="round-arrow">${icon('arrow')}</span></div>
-    </a>`).join('');
+      <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
+    </article>`).join('');
   return `<section class="category-grid" aria-label="Vehicle categories">${cards}</section>
     <section class="overview" aria-labelledby="overview-title">
       <div class="overview-heading">${icon('bars')}<div><h2 id="overview-title">Fleet Overview</h2><p>Serviceability across all vehicle types</p></div></div>
@@ -151,7 +151,7 @@ function trendChart() {
 function summary(screen) {
   const data = fleet[screen];
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
-    <div class="summary-main"><div class="summary-percent"><strong>${data.percent}</strong><span>Serviceability</span></div>
+    <div class="summary-main"><div class="summary-percent"><strong>${data.percent}</strong></div>
     ${vehicleArt(screen)}
     <div class="summary-total"><strong>${data.total}</strong><span>Available / Total</span></div></div>
     <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.availablePercent || data.percent}</b></div>
