@@ -21,7 +21,7 @@ Refresh the existing cards with a deeper professional palette, show the selected
 
 Use deeper muted sage and warm rose for percentage splits, subdued blue/teal/rose solid surfaces for the three detail status cards, theme-specific borders, and restrained shadows. Text and status colors keep their existing semantic meaning. The layout and all displayed values remain unchanged.
 
-Percentage indicators use heavier tabular numerals and a slim proportional rail derived from the card's existing percentage variable. The rail keeps serviceable green and unserviceable red visible without adding a second displayed value. Detail status percentages use compact tone-matched pills with readable contrast in both themes.
+Percentage indicators use heavier tabular numerals and the same semantic green and red colors as the serviceability treatment. No progress rail appears below the values. Detail status percentages use compact tone-matched decorations with readable contrast in both themes.
 
 ## Detail Unit field
 

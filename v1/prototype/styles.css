@@ -532,10 +532,9 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
 .mission-stat { border-color: var(--card-mission-border); background-color: var(--card-mission-surface); }
 .unavailable-stat { border-color: var(--card-unavailable-border); background-color: var(--card-unavailable-surface); }
 
-/* Percentage indicators use the existing values and card split variables. */
+/* Percentage indicators reuse the serviceable and unserviceable card colors. */
 :root[data-theme] .service-percent,
 :root[data-theme] .summary-percent strong {
-  position: relative;
   display: inline-block;
   width: max-content;
   color: var(--indicator-serviceable);
@@ -543,23 +542,6 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
   font-variant-numeric: tabular-nums;
   letter-spacing: -1.6px;
   text-shadow: var(--indicator-text-shadow);
-}
-:root[data-theme] .service-percent::after,
-:root[data-theme] .summary-percent strong::after {
-  position: absolute;
-  right: 0;
-  bottom: -5px;
-  left: 0;
-  height: 4px;
-  border-radius: 999px;
-  box-shadow: 0 1px 3px rgb(17 28 45 / .18);
-  content: "";
-}
-:root[data-theme] .service-percent::after {
-  background: linear-gradient(to right, var(--indicator-serviceable) 0 var(--serviceability), var(--indicator-unserviceable) var(--serviceability) 100%);
-}
-:root[data-theme] .summary-percent strong::after {
-  background: linear-gradient(to right, var(--indicator-serviceable) 0 var(--percentage), var(--indicator-unserviceable) var(--percentage) 100%);
 }
 .summary-stat b {
   position: relative;

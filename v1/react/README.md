@@ -7,7 +7,7 @@
 - `DetailSummaryCards` — the Serviceability, Available, On Mission, and Not Available detail cards.
 
 The components depend only on React. They contain no router, API client, storage, global state, or third-party UI-library code. Import the component stylesheet once inside the ERP feature boundary.
-The scoped stylesheet gives serviceability values tabular typography and a proportional green/red rail, while status percentages use compact semantic decorations that do not change card measurements.
+The scoped stylesheet gives serviceability values tabular typography and matching semantic green/red colors, while status percentages use compact decorations that do not change card measurements.
 
 ```jsx
 import {

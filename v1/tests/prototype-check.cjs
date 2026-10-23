@@ -152,8 +152,8 @@ assert.match(reactSource, /\.\.\.\(id \? \{id\} : \{\}\)/, 'Unit field applies a
 assert.match(reactSource, /aria-disabled="true"/, 'React Unit field is disabled');
 assert.match(reactStyles, /\.vms-serviceability/);
 assert.match(reactStyles, /\[data-theme="dark"\]/);
-assert.match(reactStyles, /\.vms-fleet-card__numbers > strong::after/);
-assert.match(reactStyles, /\.vms-serviceability-card__percentage strong::after/);
+assert.doesNotMatch(reactStyles, /\.vms-fleet-card__numbers > strong::after/, 'React dashboard percentage has no progress rail');
+assert.doesNotMatch(reactStyles, /\.vms-serviceability-card__percentage strong::after/, 'React detail percentage has no progress rail');
 assert.match(reactStyles, /\.vms-summary-card > b/);
 assert.match(reactReadme, /ERP integration inputs/);
 assert.match(reactReadme, /disabled Unit text input/);

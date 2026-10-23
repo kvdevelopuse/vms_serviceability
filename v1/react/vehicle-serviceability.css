@@ -113,7 +113,6 @@
 .vms-fleet-card__numbers > strong { font-size: 3rem; }
 .vms-fleet-card__numbers > strong,
 .vms-serviceability-card__percentage strong {
-  position: relative;
   display: inline-block;
   width: max-content;
   color: var(--vms-indicator-serviceable);
@@ -121,23 +120,6 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -.03em;
   text-shadow: var(--vms-indicator-text-shadow);
-}
-.vms-fleet-card__numbers > strong::after,
-.vms-serviceability-card__percentage strong::after {
-  position: absolute;
-  right: 0;
-  bottom: -5px;
-  left: 0;
-  height: 4px;
-  border-radius: 999px;
-  box-shadow: 0 1px 3px rgb(17 28 45 / 18%);
-  content: "";
-}
-.vms-fleet-card__numbers > strong::after {
-  background: linear-gradient(to right, var(--vms-indicator-serviceable) 0 var(--vms-serviceability), var(--vms-indicator-unserviceable) var(--vms-serviceability) 100%);
-}
-.vms-serviceability-card__percentage strong::after {
-  background: linear-gradient(to right, var(--vms-indicator-serviceable) 0 var(--vms-percentage), var(--vms-indicator-unserviceable) var(--vms-percentage) 100%);
 }
 .vms-fleet-card__numbers > span { display: grid; text-align: right; }
 .vms-fleet-card small, .vms-serviceability-card small, .vms-summary-card small { color: var(--vms-secondary); }
