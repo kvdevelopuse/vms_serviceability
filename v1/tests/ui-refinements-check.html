@@ -44,6 +44,10 @@
         const doc = frame.contentDocument;
         const api = frame.contentWindow.prototypeApi;
         if (!api) throw new Error('prototype API was not exposed');
+        if (api.STORAGE_KEY !== 'vms-serviceability-record-edits-v1') throw new Error(`storage key was ${JSON.stringify(api.STORAGE_KEY)}`);
+        frame.contentWindow.localStorage.removeItem(api.STORAGE_KEY);
+        api.reloadSavedRecords(frame.contentWindow.localStorage);
+        const immutableSource = JSON.stringify(api.recordsByDate);
         if (JSON.stringify(api.supportedDates) !== JSON.stringify(supportedDates)) throw new Error(`supported dates were ${JSON.stringify(api.supportedDates)}`);
         if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
         if (new Set(api.vehicleRecords.map(record => record.id)).size !== 120) throw new Error('record IDs were not unique');
@@ -134,7 +138,8 @@
         if (doc.querySelectorAll('tbody tr').length !== 10) throw new Error('selected-unit first page did not contain ten records');
         const selectedRow = doc.querySelector('tbody tr');
         const selectedRecordId = selectedRow.dataset.recordId;
-        const beforeDialog = JSON.stringify(api.recordsByDate['2026-10-21']);
+        const beforeDialog = JSON.stringify(api.recordsFor('All', 'all', '2026-10-21'));
+        const storageBeforeDialog = frame.contentWindow.localStorage.getItem(api.STORAGE_KEY);
         const referenceStatus = api.recordsByDate['2026-10-22'].find(record => record.id === selectedRecordId).status;
         selectedRow.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
         await delay(100);
@@ -171,7 +176,7 @@
         await delay(50);
         dialog = doc.querySelector('dialog[open]');
         if (!dialog || JSON.stringify(visibleActions()) !== JSON.stringify(['Modify', 'Close'])) throw new Error('Cancel did not keep the popup open in view mode');
-        if (JSON.stringify(api.recordsByDate['2026-10-21']) !== beforeDialog) throw new Error('Cancel changed the active date dataset');
+        if (JSON.stringify(api.recordsFor('All', 'all', '2026-10-21')) !== beforeDialog || frame.contentWindow.localStorage.getItem(api.STORAGE_KEY) !== storageBeforeDialog) throw new Error('Cancel changed records or browser storage');
         if (dialog.querySelector('[name="reason"]').value === 'cancel this change') throw new Error('Cancel did not restore stored values');
         dialog.querySelector('[data-action="modify"]').click();
         dialog.querySelector('[name="status"]').value = 'Non-Serviceable';
@@ -183,9 +188,16 @@
         await delay(100);
         dialog = doc.querySelector('dialog[open]');
         if (!dialog || JSON.stringify(visibleActions()) !== JSON.stringify(['Modify', 'Close'])) throw new Error('Save did not keep the popup open in view mode');
-        const savedRecord = api.recordsByDate['2026-10-21'].find(record => record.id === selectedRecordId);
+        const savedRecord = api.recordsFor('All', 'all', '2026-10-21').find(record => record.id === selectedRecordId);
         if (JSON.stringify([savedRecord.status, savedRecord.discoveredDate, savedRecord.location, savedRecord.deployed, savedRecord.reason]) !== JSON.stringify(['Not Available', '2026-10-20', 'Outside Country', 'No', 'Brake inspection required'])) throw new Error('Save did not persist all popup fields');
-        if (api.recordsByDate['2026-10-22'].find(record => record.id === selectedRecordId).status !== referenceStatus) throw new Error('Save changed the reference-date snapshot');
+        const savedEdit = api.getSavedRecord('2026-10-21', selectedRecordId);
+        if (!savedEdit || savedEdit.status !== 'Non-Serviceable' || savedEdit.reason !== 'Brake inspection required') throw new Error('Save did not create the date/vehicle storage entry');
+        const persisted = JSON.parse(frame.contentWindow.localStorage.getItem(api.STORAGE_KEY));
+        if (!persisted.edits[`2026-10-21|${selectedRecordId}`] || persisted.edits[`2026-10-22|${selectedRecordId}`]) throw new Error('localStorage was not keyed by selected date and vehicle');
+        api.reloadSavedRecords(frame.contentWindow.localStorage);
+        if (api.recordsFor('All', 'all', '2026-10-21').find(record => record.id === selectedRecordId).reason !== 'Brake inspection required') throw new Error('saved popup values were not retrieved after storage rehydration');
+        if (api.recordsFor('All', 'all', '2026-10-22').find(record => record.id === selectedRecordId).status !== referenceStatus || api.getSavedRecord('2026-10-22', selectedRecordId)) throw new Error('Save changed the reference-date result');
+        if (JSON.stringify(api.recordsByDate) !== immutableSource) throw new Error('Save mutated an original date snapshot');
         if (doc.querySelector('.summary-percent').textContent.trim() !== '45%' || !doc.querySelector('.summary-main').textContent.includes('5 / 11')) throw new Error('Save did not recalculate detail aggregates');
         if (!doc.querySelector(`tr[data-record-id="${selectedRecordId}"] .status-badge.unavailable`)) throw new Error('Save did not update the displayed vehicle row');
         doc.getElementById('theme-toggle').click();
@@ -210,7 +222,7 @@
         dialog.querySelector('[data-action="modify"]').click();
         dialog.querySelector('[data-action="save"]').click();
         await delay(100);
-        if (api.recordsByDate['2026-10-21'].find(record => record.id === missionRecordId).status !== 'On Mission') throw new Error('saving an unchanged On Mission record changed its operational status');
+        if (api.recordsFor('All', 'all', '2026-10-21').find(record => record.id === missionRecordId).status !== 'On Mission') throw new Error('saving an unchanged On Mission record changed its operational status');
         const closeUnchanged = doc.querySelector('dialog[open] [data-action="close"]');
         if (!closeUnchanged) throw new Error('unchanged Save did not keep the popup open in view mode');
         closeUnchanged.click();
@@ -290,8 +302,8 @@
         const noOpUnavailable = api.vehicleRecords.find(record => record.status === 'Not Available' && record.reason === '' && record.assignment !== 'Under Maintenance');
         if (!noOpUnavailable) throw new Error('no reference Not Available record was available for no-op Save verification');
         const preservedAssignment = noOpUnavailable.assignment;
-        api.saveRecord('2026-10-22', noOpUnavailable.id, {status: 'Non-Serviceable', discoveredDate: noOpUnavailable.discoveredDate, location: 'Outside Country', deployed: 'No', reason: ''});
-        if (noOpUnavailable.assignment !== preservedAssignment || noOpUnavailable.location !== 'Outside Country' || noOpUnavailable.deployed !== 'No') throw new Error('unchanged status/reason Save did not preserve Current Assignment');
+        const noOpResult = api.saveRecord('2026-10-22', noOpUnavailable.id, {status: 'Non-Serviceable', discoveredDate: noOpUnavailable.discoveredDate, location: 'Outside Country', deployed: 'No', reason: ''});
+        if (noOpResult.assignment !== preservedAssignment || noOpResult.location !== 'Outside Country' || noOpResult.deployed !== 'No' || noOpUnavailable.location !== 'Inside Country') throw new Error('unchanged status/reason Save did not preserve assignment and source immutability');
         report('PASS', 'three reconciled date snapshots; formatted dates; retained Unit/date; proportional dashboard/detail cards; themed editable row dialog');
       } catch (error) {
         report('FAIL', error.message);

@@ -189,10 +189,65 @@ const recordsByDate = {
   '2026-10-21': buildHistoricalRecords(vehicleRecords, historicalAllocations['2026-10-21'], '2026-10-21'),
   [REFERENCE_DATE]: vehicleRecords,
 };
+const STORAGE_KEY = 'vms-serviceability-record-edits-v1';
+let savedRecordEdits = {};
+
+function savedRecordKey(date, recordId) {
+  return `${date}|${recordId}`;
+}
+
+function normalizeSavedEdit(edit) {
+  if (!edit || !['Serviceable', 'Non-Serviceable'].includes(edit.status) || !/^\d{4}-\d{2}-\d{2}$/.test(edit.discoveredDate) || !['Inside Country', 'Outside Country'].includes(edit.location) || !['Yes', 'No'].includes(edit.deployed) || typeof edit.reason !== 'string' || !statusNames.includes(edit.operationalStatus) || typeof edit.assignment !== 'string') return null;
+  return {
+    status: edit.status,
+    discoveredDate: edit.discoveredDate,
+    location: edit.location,
+    deployed: edit.deployed,
+    reason: edit.reason,
+    operationalStatus: edit.operationalStatus,
+    assignment: edit.assignment,
+  };
+}
+
+function reloadSavedRecords(storage) {
+  savedRecordEdits = {};
+  if (!storage) return savedRecordEdits;
+  try {
+    const payload = JSON.parse(storage.getItem(STORAGE_KEY) || '{}');
+    for (const [key, edit] of Object.entries(payload.edits || {})) {
+      const [date, recordId] = key.split('|');
+      const validRecord = supportedDates.includes(date) && recordsByDate[date]?.some(record => record.id === recordId);
+      const normalized = validRecord ? normalizeSavedEdit(edit) : null;
+      if (normalized) savedRecordEdits[key] = normalized;
+    }
+  } catch {
+    savedRecordEdits = {};
+  }
+  return savedRecordEdits;
+}
+
+function persistSavedRecords(storage) {
+  if (!storage) return;
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify({version: 1, edits: savedRecordEdits}));
+  } catch {
+    // The prototype still works in-memory when browser storage is unavailable.
+  }
+}
+
+function getSavedRecord(date, recordId) {
+  const edit = savedRecordEdits[savedRecordKey(date, recordId)];
+  return edit ? {...edit} : null;
+}
+
+function effectiveRecord(record, date) {
+  const edit = getSavedRecord(date, record.id);
+  return edit ? {...record, status: edit.operationalStatus, discoveredDate: edit.discoveredDate, location: edit.location, deployed: edit.deployed, reason: edit.reason, assignment: edit.assignment} : {...record};
+}
 
 function recordsFor(unit = 'All', screen = 'all', date = REFERENCE_DATE) {
   const records = recordsByDate[date] || recordsByDate[REFERENCE_DATE];
-  return records.filter(record => (unit === 'All' || record.unit === unit) && (screen === 'all' || record.category === screen));
+  return records.filter(record => (unit === 'All' || record.unit === unit) && (screen === 'all' || record.category === screen)).map(record => effectiveRecord(record, date));
 }
 
 function aggregateFor(unit = 'All', screen = 'all', date = REFERENCE_DATE) {
@@ -203,23 +258,31 @@ function aggregateFor(unit = 'All', screen = 'all', date = REFERENCE_DATE) {
   return {available, mission, unavailable, total: records.length, percent: records.length ? Math.round(available / records.length * 100) : 0};
 }
 
-function saveRecord(date, recordId, values) {
-  const record = recordsByDate[date]?.find(item => item.id === recordId);
+function saveRecord(date, recordId, values, storage = null) {
+  const record = recordsFor('All', 'all', date).find(item => item.id === recordId);
   if (!record) return null;
   const previousStatus = record.status;
   const previousReason = record.reason;
   const currentSelection = previousStatus === 'Available' ? 'Serviceable' : 'Non-Serviceable';
   const status = values.status === currentSelection ? previousStatus : values.status === 'Serviceable' ? 'Available' : 'Not Available';
   const reason = String(values.reason ?? previousReason);
-  record.status = status;
-  record.discoveredDate = /^\d{4}-\d{2}-\d{2}$/.test(values.discoveredDate) ? values.discoveredDate : record.discoveredDate;
-  record.location = values.location;
-  record.deployed = values.deployed;
-  record.reason = reason;
+  const discoveredDate = /^\d{4}-\d{2}-\d{2}$/.test(values.discoveredDate) ? values.discoveredDate : record.discoveredDate;
+  let assignment = record.assignment;
   if (status !== previousStatus || status === 'Not Available' && reason !== previousReason) {
-    record.assignment = status === 'Available' ? 'â€”' : reason || 'Under Maintenance';
+    assignment = status === 'Available' ? 'â€”' : reason || 'Under Maintenance';
   }
-  return record;
+  const edit = {
+    status: values.status,
+    discoveredDate,
+    location: values.location,
+    deployed: values.deployed,
+    reason,
+    operationalStatus: status,
+    assignment,
+  };
+  savedRecordEdits[savedRecordKey(date, recordId)] = edit;
+  persistSavedRecords(storage);
+  return effectiveRecord(record, date);
 }
 
 function percentage(value, total) {
@@ -400,7 +463,7 @@ function vehicleTable(screen, state) {
 
 function recordDialog(state) {
   if (!state.activeRecordId) return '';
-  const record = recordsByDate[state.date]?.find(item => item.id === state.activeRecordId);
+  const record = recordsFor('All', 'all', state.date).find(item => item.id === state.activeRecordId);
   if (!record) return '';
   const selectedStatus = record.status === 'Available' ? 'Serviceable' : 'Non-Serviceable';
   return `<dialog class="record-dialog" aria-label="Vehicle record details" data-record-id="${record.id}" data-mode="view">
@@ -431,11 +494,12 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, saveRecord, formatDate, percentageStyle};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle};
 }
 
 if (typeof document !== 'undefined') {
-  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, saveRecord, formatDate, percentageStyle};
+  reloadSavedRecords(window.localStorage);
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle};
   let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null};
   const app = document.getElementById('app');
   function fitDashboard() {
@@ -501,7 +565,7 @@ if (typeof document !== 'undefined') {
         location: dialog.querySelector('[name="location"]').value,
         deployed: dialog.querySelector('[name="deployed"]').value,
         reason: dialog.querySelector('[name="reason"]').value,
-      });
+      }, window.localStorage);
       paint();
       return;
     }
