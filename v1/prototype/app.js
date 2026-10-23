@@ -70,6 +70,65 @@ const fleet = {
   },
 };
 
+const units = ['All', 'Unit A', 'Unit B', 'Unit C', 'Unit D'];
+const unitAllocations = {
+  'Unit A': {sedan: [9, 2, 1], suv: [9, 3, 2], 'people-movers': [6, 2, 0]},
+  'Unit B': {sedan: [8, 2, 1], suv: [8, 3, 2], 'people-movers': [6, 1, 1]},
+  'Unit C': {sedan: [7, 2, 0], suv: [7, 3, 1], 'people-movers': [7, 1, 1]},
+  'Unit D': {sedan: [6, 1, 1], suv: [6, 2, 2], 'people-movers': [5, 2, 0]},
+};
+const categoryTemplates = {
+  sedan: {type: 'Sedan', prefix: 'SD', models: ['Toyota Camry', 'Honda Accord', 'Nissan Altima', 'Honda Civic', 'Kia K5']},
+  suv: {type: 'SUV', prefix: 'SV', models: ['Toyota RAV4', 'Honda CR-V', 'Nissan X-Trail', 'Mazda CX-5', 'Ford Everest']},
+  'people-movers': {type: 'People Mover', prefix: 'PM', models: ['Toyota Hiace', 'Hyundai Staria', 'Nissan Urvan', 'Nissan NV350']},
+};
+const statusNames = ['Available', 'On Mission', 'Not Available'];
+
+function buildVehicleRecords() {
+  const records = [];
+  for (const [unit, categories] of Object.entries(unitAllocations)) {
+    const unitCode = unit.at(-1);
+    for (const [category, counts] of Object.entries(categories)) {
+      const template = categoryTemplates[category];
+      let categoryIndex = 0;
+      counts.forEach((count, statusIndex) => {
+        for (let index = 0; index < count; index += 1) {
+          categoryIndex += 1;
+          const sequence = String(categoryIndex).padStart(3, '0');
+          const recordNumber = records.length + 1;
+          records.push({
+            id: `${unitCode}-${template.prefix}-${sequence}`,
+            unit,
+            category,
+            type: template.type,
+            plate: `${unitCode}${template.prefix}-${sequence}`,
+            model: template.models[(categoryIndex - 1) % template.models.length],
+            year: String(2023 + (categoryIndex % 2)),
+            status: statusNames[statusIndex],
+            time: `${String(6 + Math.floor((recordNumber % 240) / 60)).padStart(2, '0')}:${String((recordNumber * 7) % 60).padStart(2, '0')}`,
+            assignment: statusIndex === 0 ? '—' : statusIndex === 1 ? `Mission #M-${1000 + recordNumber}` : recordNumber % 2 ? 'Under Maintenance' : 'Inspection Due',
+          });
+        }
+      });
+    }
+  }
+  return records;
+}
+
+const vehicleRecords = buildVehicleRecords();
+
+function recordsFor(unit = 'All', screen = 'all') {
+  return vehicleRecords.filter(record => (unit === 'All' || record.unit === unit) && (screen === 'all' || record.category === screen));
+}
+
+function aggregateFor(unit = 'All', screen = 'all') {
+  const records = recordsFor(unit, screen);
+  const available = records.filter(record => record.status === 'Available').length;
+  const mission = records.filter(record => record.status === 'On Mission').length;
+  const unavailable = records.filter(record => record.status === 'Not Available').length;
+  return {available, mission, unavailable, total: records.length, percent: records.length ? Math.round(available / records.length * 100) : 0};
+}
+
 function icon(name) {
   const symbols = {car:'▰', grid:'▦', arrow:'→', back:'❮', down:'⌄', check:'✓', wheel:'◎', wrench:'🔧', bars:'▂▅▇', pin:'♧', search:'⌕', filters:'↟', calendar:'▦', moon:'◐', sun:'◐', close:'×'};
   return `<span class="icon icon-${name}" aria-hidden="true">${symbols[name] || ''}</span>`;
@@ -85,7 +144,19 @@ function transition(state, action) {
     return {...state, theme: state.theme === 'light' ? 'dark' : 'light'};
   }
   if (action.type === 'navigate') {
-    return {...state, screen: Object.hasOwn(fleet, action.screen) ? action.screen : 'dashboard'};
+    return {...state, screen: Object.hasOwn(fleet, action.screen) ? action.screen : 'dashboard', activeRecordId: null};
+  }
+  if (action.type === 'set-unit' && units.includes(action.unit)) {
+    return {...state, unit: action.unit, activeRecordId: null};
+  }
+  if (action.type === 'set-date') {
+    return {...state, date: action.date};
+  }
+  if (action.type === 'open-record') {
+    return {...state, activeRecordId: action.recordId};
+  }
+  if (action.type === 'close-record') {
+    return {...state, activeRecordId: null};
   }
   return state;
 }
@@ -189,10 +260,11 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, aggregateFor, recordsFor};
 }
 
 if (typeof document !== 'undefined') {
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, aggregateFor, recordsFor};
   let state = {screen: screenFromHash(location.hash), theme: 'light'};
   const app = document.getElementById('app');
   function fitDashboard() {

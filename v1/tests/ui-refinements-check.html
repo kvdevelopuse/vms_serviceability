@@ -8,6 +8,13 @@
     const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     const expectedPercentages = {all: '70%', sedan: '75%', suv: '63%', 'people-movers': '75%'};
     const expectedTitles = {all: 'All Vehicles', sedan: 'Sedan', suv: 'SUV', 'people-movers': 'People Movers'};
+    const expectedAllocations = {
+      'Unit A': {all: [24, 7, 3, 34, 71], sedan: [9, 2, 1, 12, 75], suv: [9, 3, 2, 14, 64], 'people-movers': [6, 2, 0, 8, 75]},
+      'Unit B': {all: [22, 6, 4, 32, 69], sedan: [8, 2, 1, 11, 73], suv: [8, 3, 2, 13, 62], 'people-movers': [6, 1, 1, 8, 75]},
+      'Unit C': {all: [21, 6, 2, 29, 72], sedan: [7, 2, 0, 9, 78], suv: [7, 3, 1, 11, 64], 'people-movers': [7, 1, 1, 9, 78]},
+      'Unit D': {all: [17, 5, 3, 25, 68], sedan: [6, 1, 1, 8, 75], suv: [6, 2, 2, 10, 60], 'people-movers': [5, 2, 0, 7, 71]},
+      All: {all: [84, 24, 12, 120, 70], sedan: [30, 7, 3, 40, 75], suv: [30, 11, 7, 48, 63], 'people-movers': [24, 6, 2, 32, 75]},
+    };
     const report = (status, detail) => {
       document.body.dataset.result = status.toLowerCase();
       document.getElementById('result').textContent = `${status}: ${detail}`;
@@ -18,6 +25,30 @@
       try {
         await delay(100);
         const doc = frame.contentDocument;
+        const api = frame.contentWindow.prototypeApi;
+        if (!api) throw new Error('prototype API was not exposed');
+        if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
+        if (new Set(api.vehicleRecords.map(record => record.id)).size !== 120) throw new Error('record IDs were not unique');
+        if (new Set(api.vehicleRecords.map(record => record.plate)).size !== 120) throw new Error('plate numbers were not unique');
+        for (const [unit, screens] of Object.entries(expectedAllocations)) {
+          for (const [screen, expected] of Object.entries(screens)) {
+            const aggregate = api.aggregateFor(unit, screen);
+            const actual = [aggregate.available, aggregate.mission, aggregate.unavailable, aggregate.total, aggregate.percent];
+            if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+              throw new Error(`${unit}/${screen} aggregate was ${JSON.stringify(actual)}`);
+            }
+            if (api.recordsFor(unit, screen).length !== expected[3]) {
+              throw new Error(`${unit}/${screen} record total did not match aggregate`);
+            }
+          }
+        }
+        let retained = api.transition({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null}, {type: 'set-unit', unit: 'Unit C'});
+        retained = api.transition(retained, {type: 'set-date', date: '2026-12-31'});
+        retained = api.transition(retained, {type: 'navigate', screen: 'suv'});
+        retained = api.transition(retained, {type: 'toggle-theme'});
+        if (retained.unit !== 'Unit C' || retained.date !== '2026-12-31' || retained.screen !== 'suv' || retained.theme !== 'dark') {
+          throw new Error(`unit/date state was not retained: ${JSON.stringify(retained)}`);
+        }
         const dashboardPercentages = [...doc.querySelectorAll('.category-numbers > div:first-child')].map(node => node.textContent.trim());
         const expectedDashboard = Object.values(expectedPercentages);
         if (JSON.stringify(dashboardPercentages) !== JSON.stringify(expectedDashboard)) {
