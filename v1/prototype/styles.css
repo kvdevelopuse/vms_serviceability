@@ -392,6 +392,14 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
   .detail .page-size { padding-top: 8px; padding-bottom: 8px; }
 }
 
+@media (orientation: landscape) and (max-height: 520px) {
+  html:not([data-screen="dashboard"]),
+  html:not([data-screen="dashboard"]) body { height: auto; min-height: 100%; overflow: visible; }
+  html:not([data-screen="dashboard"]) #app { height: auto; min-height: 100dvh; }
+  .detail { flex: none; overflow: visible; }
+  .detail .table-panel { flex: none; display: block; overflow: visible; }
+}
+
 /* ESNAAD reference styling: light theme only; existing layout is retained. */
 :root[data-theme="light"] {
   --background: #faf9f7;

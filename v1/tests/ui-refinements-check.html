@@ -79,6 +79,21 @@
         api.reloadSavedRecords(frame.contentWindow.localStorage);
         secondFrame.remove();
         reopenedFrame.remove();
+        for (const [width, height] of [[740, 360], [844, 390]]) {
+          const landscapeFrame = document.createElement('iframe');
+          landscapeFrame.style.cssText = `position:absolute;left:-10000px;top:0;width:${width}px;height:${height}px;border:0`;
+          const landscapeLoaded = new Promise(resolve => landscapeFrame.addEventListener('load', resolve, {once: true}));
+          landscapeFrame.src = '../prototype/index.html#suv';
+          document.body.append(landscapeFrame);
+          await landscapeLoaded;
+          await delay(75);
+          const landscapeDoc = landscapeFrame.contentDocument;
+          const landscapeTable = landscapeDoc.querySelector('.table-scroll');
+          if (landscapeDoc.querySelectorAll('tbody tr').length !== 10 || landscapeTable.getBoundingClientRect().height < 300 || landscapeDoc.documentElement.scrollHeight <= landscapeFrame.contentWindow.innerHeight) {
+            throw new Error(`vehicle grid was clipped in ${width}x${height} mobile landscape`);
+          }
+          landscapeFrame.remove();
+        }
         if (JSON.stringify(api.supportedDates) !== JSON.stringify(supportedDates)) throw new Error(`supported dates were ${JSON.stringify(api.supportedDates)}`);
         if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
         if (new Set(api.vehicleRecords.map(record => record.id)).size !== 120) throw new Error('record IDs were not unique');
