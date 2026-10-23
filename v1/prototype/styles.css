@@ -210,6 +210,10 @@ td:nth-child(7) { width: 20%; }
 .dialog-fields label { display: grid; grid-template-columns: minmax(190px, .9fr) minmax(0, 1.4fr); align-items: center; gap: 18px; color: var(--text); font-size: 16px; font-weight: 600; }
 .record-dialog textarea { width: 100%; resize: vertical; line-height: 1.4; }
 .dialog-fields label:last-child { align-items: start; }
+.record-dialog select:disabled, .record-dialog input:disabled, .record-dialog textarea:disabled { opacity: 1; cursor: default; color: var(--text); -webkit-text-fill-color: var(--text); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+.dialog-actions button { min-width: 96px; min-height: 42px; padding: 9px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+.dialog-actions [data-action="modify"], .dialog-actions [data-action="save"] { border-color: var(--blue); background: var(--blue); color: white; }
 .table-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-top: 20px; font-size: 16px; color: var(--secondary); }
 .pagination { display: flex; align-items: center; gap: 9px; }
 .page-arrow { display: flex; justify-content: center; align-items: center; width: 25px; height: 38px; font-size: 18px; }

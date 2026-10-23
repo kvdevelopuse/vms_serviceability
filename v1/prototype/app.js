@@ -232,6 +232,14 @@ function formatDate(date) {
   return `${String(day).padStart(2, '0')}-${months[month - 1]}-${year}`;
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
+}
+
+function selectedOption(value, selected) {
+  return `<option${value === selected ? ' selected' : ''}>${value}</option>`;
+}
+
 function icon(name) {
   const symbols = {car:'▰', grid:'▦', arrow:'→', back:'❮', down:'⌄', check:'✓', wheel:'◎', wrench:'🔧', bars:'▂▅▇', pin:'♧', search:'⌕', filters:'↟', calendar:'▦', moon:'◐', sun:'◐', close:'×'};
   return `<span class="icon icon-${name}" aria-hidden="true">${symbols[name] || ''}</span>`;
@@ -367,13 +375,19 @@ function recordDialog(state) {
   const record = recordsByDate[state.date]?.find(item => item.id === state.activeRecordId);
   if (!record) return '';
   const selectedStatus = record.status === 'Available' ? 'Serviceable' : 'Non-Serviceable';
-  return `<dialog class="record-dialog" aria-label="Vehicle record details" data-record-id="${record.id}">
+  return `<dialog class="record-dialog" aria-label="Vehicle record details" data-record-id="${record.id}" data-mode="view">
     <div class="dialog-fields">
-      <label>Status:<select>${['Serviceable', 'Non-Serviceable'].map(value => `<option${value === selectedStatus ? ' selected' : ''}>${value}</option>`).join('')}</select></label>
-      <label>Discovered Date:<span class="formatted-date-input"><span>${formatDate(record.discoveredDate)}</span><input type="date" value="${record.discoveredDate}" aria-label="Discovered Date"></span></label>
-      <label>Location:<select><option>Inside Country</option><option>Outside Country</option></select></label>
-      <label>Deployed:<select><option>Yes</option><option>No</option></select></label>
-      <label>Reason for Non-Serviceability:<textarea rows="5"></textarea></label>
+      <label>Status:<select name="status" disabled>${['Serviceable', 'Non-Serviceable'].map(value => selectedOption(value, selectedStatus)).join('')}</select></label>
+      <label>Discovered Date:<span class="formatted-date-input"><span>${formatDate(record.discoveredDate)}</span><input name="discoveredDate" type="date" value="${record.discoveredDate}" aria-label="Discovered Date" disabled></span></label>
+      <label>Location:<select name="location" disabled>${['Inside Country', 'Outside Country'].map(value => selectedOption(value, record.location)).join('')}</select></label>
+      <label>Deployed:<select name="deployed" disabled>${['Yes', 'No'].map(value => selectedOption(value, record.deployed)).join('')}</select></label>
+      <label>Reason for Non-Serviceability:<textarea name="reason" rows="5" disabled>${escapeHtml(record.reason)}</textarea></label>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" data-action="modify">Modify</button>
+      <button type="button" data-action="close">Close</button>
+      <button type="button" data-action="save" hidden>Save</button>
+      <button type="button" data-action="cancel" hidden>Cancel</button>
     </div>
   </dialog>`;
 }
@@ -438,10 +452,45 @@ if (typeof document !== 'undefined') {
       return;
     }
     const dialog = event.target.closest('.record-dialog');
+    const action = event.target.closest('[data-action]')?.dataset.action;
+    if (dialog && action === 'modify') {
+      dialog.dataset.mode = 'edit';
+      dialog.querySelectorAll('select, input, textarea').forEach(control => { control.disabled = false; });
+      dialog.querySelectorAll('[data-action="modify"], [data-action="close"]').forEach(button => { button.hidden = true; });
+      dialog.querySelectorAll('[data-action="save"], [data-action="cancel"]').forEach(button => { button.hidden = false; });
+      dialog.querySelector('[name="status"]').focus();
+      return;
+    }
+    if (dialog && action === 'cancel') {
+      paint();
+      return;
+    }
+    if (dialog && action === 'save') {
+      const record = recordsByDate[state.date].find(item => item.id === state.activeRecordId);
+      const status = dialog.querySelector('[name="status"]').value === 'Serviceable' ? 'Available' : 'Not Available';
+      const discoveredDate = dialog.querySelector('[name="discoveredDate"]').value;
+      record.status = status;
+      record.discoveredDate = /^\d{4}-\d{2}-\d{2}$/.test(discoveredDate) ? discoveredDate : record.discoveredDate;
+      record.location = dialog.querySelector('[name="location"]').value;
+      record.deployed = dialog.querySelector('[name="deployed"]').value;
+      record.reason = dialog.querySelector('[name="reason"]').value;
+      record.assignment = status === 'Available' ? 'â€”' : record.reason || 'Under Maintenance';
+      paint();
+      return;
+    }
+    if (dialog && action === 'close') {
+      dialog.close();
+      return;
+    }
     if (dialog && event.target === dialog) {
       const bounds = dialog.getBoundingClientRect();
       const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
       if (outside) dialog.close();
+    }
+  });
+  app.addEventListener('input', event => {
+    if (event.target.matches('.record-dialog [name="discoveredDate"]') && /^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) {
+      event.target.previousElementSibling.textContent = formatDate(event.target.value);
     }
   });
   app.addEventListener('change', event => {
