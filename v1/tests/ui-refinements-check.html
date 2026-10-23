@@ -30,6 +30,12 @@
         if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
         if (new Set(api.vehicleRecords.map(record => record.id)).size !== 120) throw new Error('record IDs were not unique');
         if (new Set(api.vehicleRecords.map(record => record.plate)).size !== 120) throw new Error('plate numbers were not unique');
+        const retainedPlates = ['AB-1234', 'CD-5678', 'EF-9012', 'IJ-7890', 'XY-7781', 'SX-1024', 'UV-3187', 'TR-8240', 'KL-6672', 'BF-1190', 'PQ-3056', 'LR-7891', 'ZT-5508', 'KD-9914', 'LM-5502', 'PQ-9876', 'PM-1001', 'PM-1002', 'PM-1003', 'PM-1004', 'PM-1005', 'PM-1006', 'PM-1007', 'PM-1008', 'PM-1009', 'PM-1010'];
+        if (retainedPlates.some(plate => !api.vehicleRecords.some(record => record.plate === plate))) throw new Error('non-conflicting legacy records were not retained');
+        const originalCamry = api.vehicleRecords.find(record => record.plate === 'AB-1234');
+        if (!originalCamry || originalCamry.model !== 'Toyota Camry' || originalCamry.year !== '2024' || originalCamry.status !== 'Available' || originalCamry.time !== '09:15') {
+          throw new Error('AB-1234 legacy values were not retained');
+        }
         for (const [unit, screens] of Object.entries(expectedAllocations)) {
           for (const [screen, expected] of Object.entries(screens)) {
             const aggregate = api.aggregateFor(unit, screen);
@@ -129,6 +135,11 @@
         if (doc.querySelector('.category-all .service-percent').textContent.trim() !== '70%' || !doc.querySelector('.category-all').textContent.includes('84 / 120')) {
           throw new Error('All did not restore original dashboard values');
         }
+        const retainedDate = doc.getElementById('dashboard-date').value;
+        doc.getElementById('dashboard-date').value = '';
+        doc.getElementById('dashboard-date').dispatchEvent(new Event('change', {bubbles: true}));
+        await delay(100);
+        if (doc.getElementById('dashboard-date').value !== retainedDate) throw new Error('clearing the date did not retain the previous selection');
         const gridRect = doc.querySelector('.category-grid').getBoundingClientRect();
         const overviewRect = doc.querySelector('.overview').getBoundingClientRect();
         if (overviewRect.top - gridRect.bottom < 24) throw new Error(`Fleet Overview gap was ${overviewRect.top - gridRect.bottom}px`);
@@ -167,6 +178,7 @@
           await delay(100);
           const rendered = doc.querySelector('.summary-percent').textContent.trim();
           if (rendered !== percentage) throw new Error(`${screen} detail percentage was ${JSON.stringify(rendered)}`);
+          if (screen === 'suv' && doc.querySelector('.available-stat b').textContent.trim() !== '62%') throw new Error('All/SUV Available percentage did not retain 62%');
         }
         report('PASS', '120 fixed records; reconciled units; retained Unit/date; proportional card colors; Fleet Overview separated; themed non-saving row dialog');
       } catch (error) {

@@ -83,10 +83,31 @@ const categoryTemplates = {
   'people-movers': {type: 'People Mover', prefix: 'PM', models: ['Toyota Hiace', 'Hyundai Staria', 'Nissan Urvan', 'Nissan NV350']},
 };
 const statusNames = ['Available', 'On Mission', 'Not Available'];
+const conflictingLegacyPlates = new Set(['GH-3456', 'KL-2345', 'MN-6789', 'OP-1357', 'QR-2468']);
+
+function legacyRecordSeeds() {
+  const seeds = new Map();
+  for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
+    for (const [type, plate, model, year, status, time, assignment] of fleet[screen].rows) {
+      if (conflictingLegacyPlates.has(plate) || seeds.has(plate)) continue;
+      const category = type === 'People Mover' ? 'people-movers' : type.toLowerCase();
+      seeds.set(plate, {category, type, plate, model, year, status, time, assignment});
+    }
+  }
+  return [...seeds.values()];
+}
 
 function buildVehicleRecords() {
-  const records = [];
-  for (const [unit, categories] of Object.entries(unitAllocations)) {
+  const remaining = Object.fromEntries(Object.entries(unitAllocations).map(([unit, categories]) => [unit,
+    Object.fromEntries(Object.entries(categories).map(([category, counts]) => [category, [...counts]])),
+  ]));
+  const records = legacyRecordSeeds().map(seed => {
+    const statusIndex = statusNames.indexOf(seed.status);
+    const unit = Object.keys(remaining).find(candidate => remaining[candidate][seed.category][statusIndex] > 0);
+    remaining[unit][seed.category][statusIndex] -= 1;
+    return {id: `LEG-${seed.plate}`, unit, ...seed};
+  });
+  for (const [unit, categories] of Object.entries(remaining)) {
     const unitCode = unit.at(-1);
     for (const [category, counts] of Object.entries(categories)) {
       const template = categoryTemplates[category];
@@ -97,7 +118,7 @@ function buildVehicleRecords() {
           const sequence = String(categoryIndex).padStart(3, '0');
           const recordNumber = records.length + 1;
           records.push({
-            id: `${unitCode}-${template.prefix}-${sequence}`,
+            id: `GEN-${unitCode}-${template.prefix}-${sequence}`,
             unit,
             category,
             type: template.type,
@@ -181,7 +202,7 @@ function transition(state, action) {
   if (action.type === 'set-unit' && units.includes(action.unit)) {
     return {...state, unit: action.unit, activeRecordId: null};
   }
-  if (action.type === 'set-date') {
+  if (action.type === 'set-date' && /^\d{4}-\d{2}-\d{2}$/.test(action.date)) {
     return {...state, date: action.date};
   }
   if (action.type === 'open-record') {
@@ -259,11 +280,12 @@ function trendChart() {
 
 function summary(screen, state) {
   const data = displayData(state.unit, screen);
+  const availablePercent = state.unit === 'All' ? (fleet[screen].availablePercent || fleet[screen].percent) : data.percentLabel;
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
     <div class="summary-main"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
     <div class="summary-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
-    <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.percent}%</b></div>
+    <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
     <div class="summary-stat mission-stat"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
     <div class="summary-stat unavailable-stat"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
   </section>`;

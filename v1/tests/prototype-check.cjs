@@ -12,6 +12,9 @@ const {
 assert.equal(vehicleRecords.length, 120);
 assert.equal(new Set(vehicleRecords.map(record => record.id)).size, 120);
 assert.equal(new Set(vehicleRecords.map(record => record.plate)).size, 120);
+for (const plate of ['AB-1234', 'CD-5678', 'EF-9012', 'IJ-7890', 'XY-7781', 'SX-1024', 'UV-3187', 'TR-8240', 'KL-6672', 'BF-1190', 'PQ-3056', 'LR-7891', 'ZT-5508', 'KD-9914', 'LM-5502', 'PQ-9876', 'PM-1001', 'PM-1002', 'PM-1003', 'PM-1004', 'PM-1005', 'PM-1006', 'PM-1007', 'PM-1008', 'PM-1009', 'PM-1010']) {
+  assert.ok(vehicleRecords.some(record => record.plate === plate), `retained legacy plate ${plate}`);
+}
 
 const expected = {
   'Unit A': {all: [24, 7, 3, 34, 71], sedan: [9, 2, 1, 12, 75], suv: [9, 3, 2, 14, 64], 'people-movers': [6, 2, 0, 8, 75]},
@@ -35,6 +38,7 @@ state = transition(state, {type: 'set-date', date: '2026-12-31'});
 state = transition(state, {type: 'navigate', screen: 'suv'});
 state = transition(state, {type: 'toggle-theme'});
 assert.deepEqual(state, {screen: 'suv', theme: 'dark', unit: 'Unit C', date: '2026-12-31', activeRecordId: null});
+assert.deepEqual(transition(state, {type: 'set-date', date: ''}), state, 'empty date retains previous selection');
 
 const dashboard = renderScreen({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null});
 assert.match(dashboard, /id="unit-filter"/);
@@ -53,6 +57,7 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.doesNotMatch(html, />Actions</);
   assert.equal((html.match(/<tr data-record-id=/g) || []).length, Math.min(10, recordsFor('Unit C', screen).length));
   assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 7);
+  if (screen === 'suv') assert.match(renderScreen({screen, theme: 'light', unit: 'All', date: '2026-10-22'}), /Available<\/span><\/div><b>62%<\/b>/);
 }
 
 const firstRecord = recordsFor('Unit A', 'sedan')[0];
