@@ -287,6 +287,11 @@
         if (doc.querySelector('.summary-percent').textContent.trim() !== '69%' || doc.querySelector('.available-stat b').textContent.trim() !== '69%' || getComputedStyle(doc.querySelector('.available-stat')).getPropertyValue('--percentage').trim() !== '69%') throw new Error('reference-date Save left the Available percentage or gradient frozen');
         const updatedReferenceRow = doc.querySelector(`tr[data-record-id="${referenceId}"]`);
         if (updatedReferenceRow.querySelector('#review-marker') || updatedReferenceRow.lastElementChild.textContent.trim() !== '<b id="review-marker">Brake check</b>') throw new Error('saved Reason was not rendered as plain text');
+        const noOpUnavailable = api.vehicleRecords.find(record => record.status === 'Not Available' && record.reason === '' && record.assignment !== 'Under Maintenance');
+        if (!noOpUnavailable) throw new Error('no reference Not Available record was available for no-op Save verification');
+        const preservedAssignment = noOpUnavailable.assignment;
+        api.saveRecord('2026-10-22', noOpUnavailable.id, {status: 'Non-Serviceable', discoveredDate: noOpUnavailable.discoveredDate, location: 'Outside Country', deployed: 'No', reason: ''});
+        if (noOpUnavailable.assignment !== preservedAssignment || noOpUnavailable.location !== 'Outside Country' || noOpUnavailable.deployed !== 'No') throw new Error('unchanged status/reason Save did not preserve Current Assignment');
         report('PASS', 'three reconciled date snapshots; formatted dates; retained Unit/date; proportional dashboard/detail cards; themed editable row dialog');
       } catch (error) {
         report('FAIL', error.message);

@@ -203,6 +203,25 @@ function aggregateFor(unit = 'All', screen = 'all', date = REFERENCE_DATE) {
   return {available, mission, unavailable, total: records.length, percent: records.length ? Math.round(available / records.length * 100) : 0};
 }
 
+function saveRecord(date, recordId, values) {
+  const record = recordsByDate[date]?.find(item => item.id === recordId);
+  if (!record) return null;
+  const previousStatus = record.status;
+  const previousReason = record.reason;
+  const currentSelection = previousStatus === 'Available' ? 'Serviceable' : 'Non-Serviceable';
+  const status = values.status === currentSelection ? previousStatus : values.status === 'Serviceable' ? 'Available' : 'Not Available';
+  const reason = String(values.reason ?? previousReason);
+  record.status = status;
+  record.discoveredDate = /^\d{4}-\d{2}-\d{2}$/.test(values.discoveredDate) ? values.discoveredDate : record.discoveredDate;
+  record.location = values.location;
+  record.deployed = values.deployed;
+  record.reason = reason;
+  if (status !== previousStatus || status === 'Not Available' && reason !== previousReason) {
+    record.assignment = status === 'Available' ? 'â€”' : reason || 'Under Maintenance';
+  }
+  return record;
+}
+
 function percentage(value, total) {
   return total ? Math.round(value / total * 100) : 0;
 }
@@ -412,11 +431,11 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate, percentageStyle};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, saveRecord, formatDate, percentageStyle};
 }
 
 if (typeof document !== 'undefined') {
-  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate, percentageStyle};
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, saveRecord, formatDate, percentageStyle};
   let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null};
   const app = document.getElementById('app');
   function fitDashboard() {
@@ -476,20 +495,13 @@ if (typeof document !== 'undefined') {
       return;
     }
     if (dialog && action === 'save') {
-      const record = recordsByDate[state.date].find(item => item.id === state.activeRecordId);
-      const selectedStatus = dialog.querySelector('[name="status"]').value;
-      const currentSelection = record.status === 'Available' ? 'Serviceable' : 'Non-Serviceable';
-      const status = selectedStatus === currentSelection ? record.status : selectedStatus === 'Serviceable' ? 'Available' : 'Not Available';
-      const previousStatus = record.status;
-      const discoveredDate = dialog.querySelector('[name="discoveredDate"]').value;
-      record.status = status;
-      record.discoveredDate = /^\d{4}-\d{2}-\d{2}$/.test(discoveredDate) ? discoveredDate : record.discoveredDate;
-      record.location = dialog.querySelector('[name="location"]').value;
-      record.deployed = dialog.querySelector('[name="deployed"]').value;
-      record.reason = dialog.querySelector('[name="reason"]').value;
-      if (status === 'Available') record.assignment = 'â€”';
-      else if (status === 'Not Available') record.assignment = record.reason || 'Under Maintenance';
-      else if (status !== previousStatus) record.assignment = 'Mission assigned';
+      saveRecord(state.date, state.activeRecordId, {
+        status: dialog.querySelector('[name="status"]').value,
+        discoveredDate: dialog.querySelector('[name="discoveredDate"]').value,
+        location: dialog.querySelector('[name="location"]').value,
+        deployed: dialog.querySelector('[name="deployed"]').value,
+        reason: dialog.querySelector('[name="reason"]').value,
+      });
       paint();
       return;
     }
