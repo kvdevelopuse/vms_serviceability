@@ -6,6 +6,7 @@
   <iframe id="prototype" src="../prototype/index.html" style="position:absolute;left:-10000px;top:0;width:1920px;height:1080px;border:0"></iframe>
   <script>
     const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+    const supportedDates = ['2026-10-20', '2026-10-21', '2026-10-22'];
     const expectedPercentages = {all: '70%', sedan: '75%', suv: '63%', 'people-movers': '75%'};
     const expectedTitles = {all: 'All Vehicles', sedan: 'Sedan', suv: 'SUV', 'people-movers': 'People Movers'};
     const expectedAllocations = {
@@ -14,6 +15,22 @@
       'Unit C': {all: [21, 6, 2, 29, 72], sedan: [7, 2, 0, 9, 78], suv: [7, 3, 1, 11, 64], 'people-movers': [7, 1, 1, 9, 78]},
       'Unit D': {all: [17, 5, 3, 25, 68], sedan: [6, 1, 1, 8, 75], suv: [6, 2, 2, 10, 60], 'people-movers': [5, 2, 0, 7, 71]},
       All: {all: [84, 24, 12, 120, 70], sedan: [30, 7, 3, 40, 75], suv: [30, 11, 7, 48, 63], 'people-movers': [24, 6, 2, 32, 75]},
+    };
+    const expectedHistoricalAllocations = {
+      '2026-10-21': {
+        'Unit A': {all: [23, 7, 4, 34, 68], sedan: [8, 3, 1, 12, 67], suv: [10, 2, 2, 14, 71], 'people-movers': [5, 2, 1, 8, 63]},
+        'Unit B': {all: [21, 7, 4, 32, 66], sedan: [7, 3, 1, 11, 64], suv: [9, 2, 2, 13, 69], 'people-movers': [5, 2, 1, 8, 63]},
+        'Unit C': {all: [20, 7, 2, 29, 69], sedan: [8, 1, 0, 9, 89], suv: [6, 4, 1, 11, 55], 'people-movers': [6, 2, 1, 9, 67]},
+        'Unit D': {all: [16, 5, 4, 25, 64], sedan: [5, 2, 1, 8, 63], suv: [7, 1, 2, 10, 70], 'people-movers': [4, 2, 1, 7, 57]},
+        All: {all: [80, 26, 14, 120, 67], sedan: [28, 9, 3, 40, 70], suv: [32, 9, 7, 48, 67], 'people-movers': [20, 8, 4, 32, 63]},
+      },
+      '2026-10-20': {
+        'Unit A': {all: [20, 10, 4, 34, 59], sedan: [7, 3, 2, 12, 58], suv: [8, 4, 2, 14, 57], 'people-movers': [5, 3, 0, 8, 63]},
+        'Unit B': {all: [20, 6, 6, 32, 63], sedan: [8, 1, 2, 11, 73], suv: [7, 4, 2, 13, 54], 'people-movers': [5, 1, 2, 8, 63]},
+        'Unit C': {all: [18, 7, 4, 29, 62], sedan: [6, 2, 1, 9, 67], suv: [7, 2, 2, 11, 64], 'people-movers': [5, 3, 1, 9, 56]},
+        'Unit D': {all: [15, 7, 3, 25, 60], sedan: [6, 1, 1, 8, 75], suv: [5, 3, 2, 10, 50], 'people-movers': [4, 3, 0, 7, 57]},
+        All: {all: [73, 30, 17, 120, 61], sedan: [27, 7, 6, 40, 68], suv: [27, 13, 8, 48, 56], 'people-movers': [19, 10, 3, 32, 59]},
+      },
     };
     const report = (status, detail) => {
       document.body.dataset.result = status.toLowerCase();
@@ -27,6 +44,7 @@
         const doc = frame.contentDocument;
         const api = frame.contentWindow.prototypeApi;
         if (!api) throw new Error('prototype API was not exposed');
+        if (JSON.stringify(api.supportedDates) !== JSON.stringify(supportedDates)) throw new Error(`supported dates were ${JSON.stringify(api.supportedDates)}`);
         if (api.vehicleRecords.length !== 120) throw new Error(`record count was ${api.vehicleRecords.length}`);
         if (new Set(api.vehicleRecords.map(record => record.id)).size !== 120) throw new Error('record IDs were not unique');
         if (new Set(api.vehicleRecords.map(record => record.plate)).size !== 120) throw new Error('plate numbers were not unique');
@@ -38,30 +56,43 @@
         }
         for (const [unit, screens] of Object.entries(expectedAllocations)) {
           for (const [screen, expected] of Object.entries(screens)) {
-            const aggregate = api.aggregateFor(unit, screen);
+            const aggregate = api.aggregateFor(unit, screen, '2026-10-22');
             const actual = [aggregate.available, aggregate.mission, aggregate.unavailable, aggregate.total, aggregate.percent];
             if (JSON.stringify(actual) !== JSON.stringify(expected)) {
               throw new Error(`${unit}/${screen} aggregate was ${JSON.stringify(actual)}`);
             }
-            if (api.recordsFor(unit, screen).length !== expected[3]) {
+            if (api.recordsFor(unit, screen, '2026-10-22').length !== expected[3]) {
               throw new Error(`${unit}/${screen} record total did not match aggregate`);
             }
           }
         }
+        for (const [date, units] of Object.entries(expectedHistoricalAllocations)) {
+          for (const [unit, screens] of Object.entries(units)) {
+            for (const [screen, expected] of Object.entries(screens)) {
+              const aggregate = api.aggregateFor(unit, screen, date);
+              const actual = [aggregate.available, aggregate.mission, aggregate.unavailable, aggregate.total, aggregate.percent];
+              if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`${date}/${unit}/${screen} aggregate was ${JSON.stringify(actual)}`);
+              if (api.recordsFor(unit, screen, date).length !== expected[3]) throw new Error(`${date}/${unit}/${screen} record total did not reconcile`);
+            }
+          }
+        }
         let retained = api.transition({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null}, {type: 'set-unit', unit: 'Unit C'});
-        retained = api.transition(retained, {type: 'set-date', date: '2026-12-31'});
+        retained = api.transition(retained, {type: 'set-date', date: '2026-10-21'});
         retained = api.transition(retained, {type: 'navigate', screen: 'suv'});
         retained = api.transition(retained, {type: 'toggle-theme'});
-        if (retained.unit !== 'Unit C' || retained.date !== '2026-12-31' || retained.screen !== 'suv' || retained.theme !== 'dark') {
+        if (retained.unit !== 'Unit C' || retained.date !== '2026-10-21' || retained.screen !== 'suv' || retained.theme !== 'dark') {
           throw new Error(`unit/date state was not retained: ${JSON.stringify(retained)}`);
         }
+        const unsupported = api.transition(retained, {type: 'set-date', date: '2026-12-31'});
+        if (unsupported.date !== '2026-10-21') throw new Error('unsupported date changed state');
         const unitSelect = doc.getElementById('unit-filter');
         const dateInput = doc.getElementById('dashboard-date');
         if (!unitSelect || JSON.stringify([...unitSelect.options].map(option => option.value)) !== JSON.stringify(['All', 'Unit A', 'Unit B', 'Unit C', 'Unit D'])) {
           throw new Error('dashboard Unit options were missing or incorrect');
         }
         if (unitSelect.value !== 'All') throw new Error(`default Unit was ${unitSelect.value}`);
-        if (!dateInput || dateInput.type !== 'date' || dateInput.value !== '2026-10-22') throw new Error('dashboard date picker default was incorrect');
+        if (!dateInput || dateInput.type !== 'date' || dateInput.value !== '2026-10-22' || dateInput.min !== '2026-10-20' || dateInput.max !== '2026-10-22') throw new Error('dashboard date picker default or limits were incorrect');
+        if (doc.querySelector('.date-display')?.textContent.trim() !== '22-Oct-2026') throw new Error('dashboard date display did not use dd-MMM-yyyy');
         const dashboardPercentages = [...doc.querySelectorAll('.category-numbers > div:first-child')].map(node => node.textContent.trim());
         const expectedDashboard = Object.values(expectedPercentages);
         if (JSON.stringify(dashboardPercentages) !== JSON.stringify(expectedDashboard)) {
@@ -80,17 +111,18 @@
         if (doc.querySelector('.category-all .service-percent').textContent.trim() !== '72%' || !doc.querySelector('.category-all').textContent.includes('21 / 29')) {
           throw new Error('Unit C dashboard aggregate did not render');
         }
-        doc.getElementById('dashboard-date').value = '2026-12-31';
+        doc.getElementById('dashboard-date').value = '2026-10-21';
         doc.getElementById('dashboard-date').dispatchEvent(new Event('change', {bubbles: true}));
         await delay(100);
         doc.querySelector('.category-suv .round-arrow').click();
         await delay(100);
         const detailUnit = doc.getElementById('detail-unit');
         if (!detailUnit || !detailUnit.disabled || detailUnit.value !== 'Unit C') throw new Error('detail Unit was not retained and disabled');
-        if (!doc.querySelector('.date[data-date="2026-12-31"]')) throw new Error('selected date was not retained on detail page');
-        if (doc.querySelector('.summary-percent').textContent.trim() !== '64%' || !doc.querySelector('.summary-main').textContent.includes('7 / 11')) {
+        if (!doc.querySelector('.date[data-date="2026-10-21"]') || doc.querySelector('.date[data-date="2026-10-21"] span:last-child').textContent.trim() !== '21-Oct-2026') throw new Error('selected date was not retained or formatted on detail page');
+        if (doc.querySelector('.summary-percent').textContent.trim() !== '55%' || !doc.querySelector('.summary-main').textContent.includes('6 / 11')) {
           throw new Error('Unit C SUV detail aggregate did not match dashboard data');
         }
+        if (![...doc.querySelectorAll('tbody tr td:nth-last-child(2)')].every(cell => cell.textContent.trim().startsWith('21-Oct-2026'))) throw new Error('table dates did not use selected dd-MMM-yyyy date');
         if ([...doc.querySelectorAll('th')].some(cell => cell.textContent.trim() === 'Actions')) throw new Error('Actions column remained');
         if (doc.querySelectorAll('tbody tr').length !== 10) throw new Error('selected-unit first page did not contain ten records');
         const beforeDialog = JSON.stringify(api.vehicleRecords);
@@ -127,6 +159,9 @@
         await delay(100);
         if (JSON.stringify(api.vehicleRecords) !== beforeDialog) throw new Error('dialog changed vehicle records');
         frame.contentWindow.location.hash = 'dashboard';
+        await delay(100);
+        doc.getElementById('dashboard-date').value = '2026-10-22';
+        doc.getElementById('dashboard-date').dispatchEvent(new Event('change', {bubbles: true}));
         await delay(100);
         const resetUnit = doc.getElementById('unit-filter');
         resetUnit.value = 'All';

@@ -71,11 +71,27 @@ const fleet = {
 };
 
 const units = ['All', 'Unit A', 'Unit B', 'Unit C', 'Unit D'];
+const REFERENCE_DATE = '2026-10-22';
+const supportedDates = ['2026-10-20', '2026-10-21', REFERENCE_DATE];
 const unitAllocations = {
   'Unit A': {sedan: [9, 2, 1], suv: [9, 3, 2], 'people-movers': [6, 2, 0]},
   'Unit B': {sedan: [8, 2, 1], suv: [8, 3, 2], 'people-movers': [6, 1, 1]},
   'Unit C': {sedan: [7, 2, 0], suv: [7, 3, 1], 'people-movers': [7, 1, 1]},
   'Unit D': {sedan: [6, 1, 1], suv: [6, 2, 2], 'people-movers': [5, 2, 0]},
+};
+const historicalAllocations = {
+  '2026-10-21': {
+    'Unit A': {sedan: [8, 3, 1], suv: [10, 2, 2], 'people-movers': [5, 2, 1]},
+    'Unit B': {sedan: [7, 3, 1], suv: [9, 2, 2], 'people-movers': [5, 2, 1]},
+    'Unit C': {sedan: [8, 1, 0], suv: [6, 4, 1], 'people-movers': [6, 2, 1]},
+    'Unit D': {sedan: [5, 2, 1], suv: [7, 1, 2], 'people-movers': [4, 2, 1]},
+  },
+  '2026-10-20': {
+    'Unit A': {sedan: [7, 3, 2], suv: [8, 4, 2], 'people-movers': [5, 3, 0]},
+    'Unit B': {sedan: [8, 1, 2], suv: [7, 4, 2], 'people-movers': [5, 1, 2]},
+    'Unit C': {sedan: [6, 2, 1], suv: [7, 2, 2], 'people-movers': [5, 3, 1]},
+    'Unit D': {sedan: [6, 1, 1], suv: [5, 3, 2], 'people-movers': [4, 3, 0]},
+  },
 };
 const categoryTemplates = {
   sedan: {type: 'Sedan', prefix: 'SD', models: ['Toyota Camry', 'Honda Accord', 'Nissan Altima', 'Honda Civic', 'Kia K5']},
@@ -136,14 +152,50 @@ function buildVehicleRecords() {
   return records;
 }
 
-const vehicleRecords = buildVehicleRecords();
-
-function recordsFor(unit = 'All', screen = 'all') {
-  return vehicleRecords.filter(record => (unit === 'All' || record.unit === unit) && (screen === 'all' || record.category === screen));
+function addRecordDetails(record, index, date) {
+  return {
+    ...record,
+    discoveredDate: date,
+    location: index % 5 === 0 ? 'Outside Country' : 'Inside Country',
+    deployed: record.status === 'Not Available' ? 'No' : 'Yes',
+    reason: record.status === 'Not Available' ? record.assignment : '',
+  };
 }
 
-function aggregateFor(unit = 'All', screen = 'all') {
-  const records = recordsFor(unit, screen);
+function buildHistoricalRecords(referenceRecords, allocations, date) {
+  const records = referenceRecords.map((record, index) => addRecordDetails(record, index, date));
+  for (const [unit, categories] of Object.entries(allocations)) {
+    for (const [category, counts] of Object.entries(categories)) {
+      const matching = records.filter(record => record.unit === unit && record.category === category);
+      let offset = 0;
+      counts.forEach((count, statusIndex) => {
+        matching.slice(offset, offset + count).forEach((record, index) => {
+          record.status = statusNames[statusIndex];
+          record.assignment = statusIndex === 0 ? 'â€”' : statusIndex === 1 ? `Mission #H-${date.slice(-2)}${String(offset + index + 1).padStart(2, '0')}` : (offset + index) % 2 ? 'Inspection Due' : 'Under Maintenance';
+          record.deployed = statusIndex === 2 ? 'No' : 'Yes';
+          record.reason = statusIndex === 2 ? record.assignment : '';
+        });
+        offset += count;
+      });
+    }
+  }
+  return records;
+}
+
+const vehicleRecords = buildVehicleRecords().map((record, index) => addRecordDetails(record, index, REFERENCE_DATE));
+const recordsByDate = {
+  '2026-10-20': buildHistoricalRecords(vehicleRecords, historicalAllocations['2026-10-20'], '2026-10-20'),
+  '2026-10-21': buildHistoricalRecords(vehicleRecords, historicalAllocations['2026-10-21'], '2026-10-21'),
+  [REFERENCE_DATE]: vehicleRecords,
+};
+
+function recordsFor(unit = 'All', screen = 'all', date = REFERENCE_DATE) {
+  const records = recordsByDate[date] || recordsByDate[REFERENCE_DATE];
+  return records.filter(record => (unit === 'All' || record.unit === unit) && (screen === 'all' || record.category === screen));
+}
+
+function aggregateFor(unit = 'All', screen = 'all', date = REFERENCE_DATE) {
+  const records = recordsFor(unit, screen, date);
   const available = records.filter(record => record.status === 'Available').length;
   const mission = records.filter(record => record.status === 'On Mission').length;
   const unavailable = records.filter(record => record.status === 'Not Available').length;
@@ -154,8 +206,8 @@ function percentage(value, total) {
   return total ? Math.round(value / total * 100) : 0;
 }
 
-function displayData(unit, screen) {
-  const aggregate = aggregateFor(unit, screen);
+function displayData(unit, screen, date = REFERENCE_DATE) {
+  const aggregate = aggregateFor(unit, screen, date);
   return {
     ...aggregate,
     title: fleet[screen].title,
@@ -176,10 +228,8 @@ function unitControl(id, selected, disabled = false) {
 
 function formatDate(date) {
   const [year, month, day] = date.split('-').map(Number);
-  const value = new Date(Date.UTC(year, month - 1, day));
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${weekdays[value.getUTCDay()]}, ${String(day).padStart(2, '0')} ${months[month - 1]} ${year}\u00a0 10:30 AM`;
+  return `${String(day).padStart(2, '0')}-${months[month - 1]}-${year}`;
 }
 
 function icon(name) {
@@ -202,7 +252,7 @@ function transition(state, action) {
   if (action.type === 'set-unit' && units.includes(action.unit)) {
     return {...state, unit: action.unit, activeRecordId: null};
   }
-  if (action.type === 'set-date' && /^\d{4}-\d{2}-\d{2}$/.test(action.date)) {
+  if (action.type === 'set-date' && supportedDates.includes(action.date)) {
     return {...state, date: action.date};
   }
   if (action.type === 'open-record') {
@@ -224,7 +274,7 @@ function header(screen, state) {
     <div class="header-tools">
       <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to ${state.theme === 'light' ? 'Dark' : 'Light'} Mode" aria-pressed="${state.theme === 'dark'}">${icon(state.theme === 'light' ? 'moon' : 'sun')}<span>${state.theme === 'light' ? 'Dark' : 'Light'} Mode</span></button>
       <div class="identity"><div class="person"><span class="avatar" aria-hidden="true">JD</span><strong>John Doe</strong>${icon('down')}</div>
-      ${dashboard ? `<label class="date date-picker" for="dashboard-date">${icon('calendar')}<input id="dashboard-date" type="date" value="${state.date}" aria-label="Dashboard date"></label>` : `<div class="date" data-date="${state.date}">${icon('calendar')}<span>${formatDate(state.date)}</span></div>`}</div>
+      ${dashboard ? `<label class="date date-picker" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>` : `<div class="date" data-date="${state.date}">${icon('calendar')}<span>${formatDate(state.date)}</span></div>`}</div>
     </div>
   </header>`;
 }
@@ -237,14 +287,14 @@ function vehicleArt(kind) {
 
 function dashboard(state) {
   const cards = Object.keys(fleet).map(key => {
-    const data = displayData(state.unit, key);
+    const data = displayData(state.unit, key, state.date);
     return `<article class="category-card category-${key}" style="--serviceability:${data.percent}%">
       <div class="category-numbers"><div><strong class="service-percent">${data.percentLabel}</strong></div><div class="category-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
       ${vehicleArt(key)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
     </article>`;
   }).join('');
-  const overall = displayData(state.unit, 'all');
+  const overall = displayData(state.unit, 'all', state.date);
   const missionEnd = overall.percent + overall.missionPercent;
   return `<section class="category-grid" aria-label="Vehicle categories">${cards}</section>
     <section class="overview" aria-labelledby="overview-title">
@@ -279,8 +329,8 @@ function trendChart() {
 }
 
 function summary(screen, state) {
-  const data = displayData(state.unit, screen);
-  const availablePercent = state.unit === 'All' ? (fleet[screen].availablePercent || fleet[screen].percent) : data.percentLabel;
+  const data = displayData(state.unit, screen, state.date);
+  const availablePercent = state.unit === 'All' && state.date === REFERENCE_DATE ? (fleet[screen].availablePercent || fleet[screen].percent) : data.percentLabel;
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
     <div class="summary-main"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
@@ -300,10 +350,10 @@ function toolbar() {
 }
 
 function vehicleTable(screen, state) {
-  const matchingRecords = recordsFor(state.unit, screen);
+  const matchingRecords = recordsFor(state.unit, screen, state.date);
   const rows = matchingRecords.slice(0, 10).map((record, index) => {
     const statusClass = record.status === 'Available' ? 'available' : record.status === 'On Mission' ? 'mission' : 'unavailable';
-    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>22 Oct 2026 ${record.time}</td><td>${record.assignment}</td></tr>`;
+    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>${formatDate(state.date)} ${record.time}</td><td>${record.assignment}</td></tr>`;
   }).join('');
   const title = fleet[screen].title;
   const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
@@ -314,13 +364,13 @@ function vehicleTable(screen, state) {
 
 function recordDialog(state) {
   if (!state.activeRecordId) return '';
-  const record = vehicleRecords.find(item => item.id === state.activeRecordId);
+  const record = recordsByDate[state.date]?.find(item => item.id === state.activeRecordId);
   if (!record) return '';
   const selectedStatus = record.status === 'Available' ? 'Serviceable' : 'Non-Serviceable';
   return `<dialog class="record-dialog" aria-label="Vehicle record details" data-record-id="${record.id}">
     <div class="dialog-fields">
       <label>Status:<select>${['Serviceable', 'Non-Serviceable'].map(value => `<option${value === selectedStatus ? ' selected' : ''}>${value}</option>`).join('')}</select></label>
-      <label>Discovered Date:<input type="date" value="${state.date}"></label>
+      <label>Discovered Date:<span class="formatted-date-input"><span>${formatDate(record.discoveredDate)}</span><input type="date" value="${record.discoveredDate}" aria-label="Discovered Date"></span></label>
       <label>Location:<select><option>Inside Country</option><option>Outside Country</option></select></label>
       <label>Deployed:<select><option>Yes</option><option>No</option></select></label>
       <label>Reason for Non-Serviceability:<textarea rows="5"></textarea></label>
@@ -330,7 +380,7 @@ function recordDialog(state) {
 
 function renderScreen(state) {
   const screen = Object.hasOwn(fleet, state.screen) ? state.screen : 'dashboard';
-  const viewState = {unit: 'All', date: '2026-10-22', activeRecordId: null, ...state};
+  const viewState = {unit: 'All', date: REFERENCE_DATE, activeRecordId: null, ...state};
   return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(viewState) : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
 }
 
@@ -339,12 +389,12 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, aggregateFor, recordsFor};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate};
 }
 
 if (typeof document !== 'undefined') {
-  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, aggregateFor, recordsFor};
-  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null};
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate};
+  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null};
   const app = document.getElementById('app');
   function fitDashboard() {
     if (state.screen === 'dashboard') {
