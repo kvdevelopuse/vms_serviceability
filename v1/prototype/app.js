@@ -206,6 +206,12 @@ function percentage(value, total) {
   return total ? Math.round(value / total * 100) : 0;
 }
 
+function percentageStyle(value) {
+  const numeric = Number.parseFloat(value);
+  const bounded = Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 0;
+  return `--percentage:${bounded}%`;
+}
+
 function displayData(unit, screen, date = REFERENCE_DATE) {
   const aggregate = aggregateFor(unit, screen, date);
   return {
@@ -325,10 +331,10 @@ function dashboard(state) {
 
 function trendChart() {
   // Fixed visual trace from the reference, not an invented underlying time-series dataset.
-  return `<svg class="trend-chart" viewBox="0 0 640 242" role="img" aria-label="Illustrated serviceability trend from 1 October to 22 October, ending at 70%">
+  return `<svg class="trend-chart" viewBox="0 0 640 242" role="img" aria-label="Illustrated serviceability trend from 01-Oct-2026 to 22-Oct-2026, ending at 70%">
     <defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#168bff" stop-opacity=".35"/><stop offset="1" stop-color="#168bff" stop-opacity=".06"/></linearGradient></defs>
     <g class="chart-grid"><path d="M80 24H615M80 69H615M80 114H615M80 159H615M80 204H615M80 24V204M200 24V204M320 24V204M440 24V204M560 24V204"/></g>
-    <g class="chart-labels"><text x="59" y="30" text-anchor="end">100%</text><text x="59" y="75" text-anchor="end">75%</text><text x="59" y="120" text-anchor="end">50%</text><text x="59" y="165" text-anchor="end">25%</text><text x="59" y="210" text-anchor="end">0%</text><text x="80" y="237" text-anchor="middle">1 Oct</text><text x="200" y="237" text-anchor="middle">7 Oct</text><text x="320" y="237" text-anchor="middle">13 Oct</text><text x="440" y="237" text-anchor="middle">19 Oct</text><text x="594" y="237" text-anchor="middle">22 Oct</text></g>
+    <g class="chart-labels"><text x="59" y="30" text-anchor="end">100%</text><text x="59" y="75" text-anchor="end">75%</text><text x="59" y="120" text-anchor="end">50%</text><text x="59" y="165" text-anchor="end">25%</text><text x="59" y="210" text-anchor="end">0%</text><text x="80" y="237" text-anchor="middle">01-Oct-2026</text><text x="200" y="237" text-anchor="middle">07-Oct-2026</text><text x="320" y="237" text-anchor="middle">13-Oct-2026</text><text x="440" y="237" text-anchor="middle">19-Oct-2026</text><text x="594" y="237" text-anchor="middle">22-Oct-2026</text></g>
     <path d="M80 139 145 125 212 120 280 99 347 114 414 102 481 105 548 83 614 80V204H80Z" fill="url(#trend-fill)"/>
     <path d="M80 139 145 125 212 120 280 99 347 114 414 102 481 105 548 83 614 80" fill="none" stroke="#0787ff" stroke-width="4" stroke-linejoin="round"/>
     <g fill="#0787ff" stroke="var(--surface)" stroke-width="2"><circle cx="80" cy="139" r="6"/><circle cx="145" cy="125" r="6"/><circle cx="212" cy="120" r="6"/><circle cx="280" cy="99" r="6"/><circle cx="347" cy="114" r="6"/><circle cx="414" cy="102" r="6"/><circle cx="481" cy="105" r="6"/><circle cx="548" cy="83" r="6"/><circle cx="614" cy="80" r="7"/></g>
@@ -340,12 +346,12 @@ function summary(screen, state) {
   const data = displayData(state.unit, screen, state.date);
   const availablePercent = state.unit === 'All' && state.date === REFERENCE_DATE ? (fleet[screen].availablePercent || fleet[screen].percent) : data.percentLabel;
   return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
-    <div class="summary-main"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
+    <div class="summary-main percentage-card" style="${percentageStyle(data.percent)}"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
     ${vehicleArt(screen)}
     <div class="summary-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
-    <div class="summary-stat available-stat"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
-    <div class="summary-stat mission-stat"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
-    <div class="summary-stat unavailable-stat"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
+    <div class="summary-stat available-stat percentage-card" style="${percentageStyle(availablePercent)}"><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
+    <div class="summary-stat mission-stat percentage-card" style="${percentageStyle(data.missionPercent)}"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
+    <div class="summary-stat unavailable-stat percentage-card" style="${percentageStyle(data.unavailablePercent)}"><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
   </section>`;
 }
 
@@ -403,11 +409,11 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate, percentageStyle};
 }
 
 if (typeof document !== 'undefined') {
-  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate};
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, aggregateFor, recordsFor, formatDate, percentageStyle};
   let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null};
   const app = document.getElementById('app');
   function fitDashboard() {
@@ -428,6 +434,7 @@ if (typeof document !== 'undefined') {
     if (dialog) {
       dialog.showModal();
       dialog.addEventListener('close', () => {
+        if (!dialog.isConnected) return;
         if (state.activeRecordId) {
           state = transition(state, {type: 'close-record'});
           paint();
@@ -467,14 +474,19 @@ if (typeof document !== 'undefined') {
     }
     if (dialog && action === 'save') {
       const record = recordsByDate[state.date].find(item => item.id === state.activeRecordId);
-      const status = dialog.querySelector('[name="status"]').value === 'Serviceable' ? 'Available' : 'Not Available';
+      const selectedStatus = dialog.querySelector('[name="status"]').value;
+      const currentSelection = record.status === 'Available' ? 'Serviceable' : 'Non-Serviceable';
+      const status = selectedStatus === currentSelection ? record.status : selectedStatus === 'Serviceable' ? 'Available' : 'Not Available';
+      const previousStatus = record.status;
       const discoveredDate = dialog.querySelector('[name="discoveredDate"]').value;
       record.status = status;
       record.discoveredDate = /^\d{4}-\d{2}-\d{2}$/.test(discoveredDate) ? discoveredDate : record.discoveredDate;
       record.location = dialog.querySelector('[name="location"]').value;
       record.deployed = dialog.querySelector('[name="deployed"]').value;
       record.reason = dialog.querySelector('[name="reason"]').value;
-      record.assignment = status === 'Available' ? 'â€”' : record.reason || 'Under Maintenance';
+      if (status === 'Available') record.assignment = 'â€”';
+      else if (status === 'Not Available') record.assignment = record.reason || 'Under Maintenance';
+      else if (status !== previousStatus) record.assignment = 'Mission assigned';
       paint();
       return;
     }

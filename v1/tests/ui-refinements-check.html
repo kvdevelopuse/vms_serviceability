@@ -93,6 +93,7 @@
         if (unitSelect.value !== 'All') throw new Error(`default Unit was ${unitSelect.value}`);
         if (!dateInput || dateInput.type !== 'date' || dateInput.value !== '2026-10-22' || dateInput.min !== '2026-10-20' || dateInput.max !== '2026-10-22') throw new Error('dashboard date picker default or limits were incorrect');
         if (doc.querySelector('.date-display')?.textContent.trim() !== '22-Oct-2026') throw new Error('dashboard date display did not use dd-MMM-yyyy');
+        if (api.formatDate('2026-09-05') !== '05-Sep-2026' || JSON.stringify([...doc.querySelectorAll('.chart-labels text')].slice(-5).map(node => node.textContent)) !== JSON.stringify(['01-Oct-2026', '07-Oct-2026', '13-Oct-2026', '19-Oct-2026', '22-Oct-2026'])) throw new Error('trend or padded dates did not use dd-MMM-yyyy');
         const dashboardPercentages = [...doc.querySelectorAll('.category-numbers > div:first-child')].map(node => node.textContent.trim());
         const expectedDashboard = Object.values(expectedPercentages);
         if (JSON.stringify(dashboardPercentages) !== JSON.stringify(expectedDashboard)) {
@@ -122,6 +123,11 @@
         if (doc.querySelector('.summary-percent').textContent.trim() !== '55%' || !doc.querySelector('.summary-main').textContent.includes('6 / 11')) {
           throw new Error('Unit C SUV detail aggregate did not match dashboard data');
         }
+        const detailCards = [...doc.querySelectorAll('.summary-grid > .percentage-card')];
+        const detailSplits = detailCards.map(card => getComputedStyle(card).getPropertyValue('--percentage').trim());
+        if (detailCards.length !== 4 || JSON.stringify(detailSplits) !== JSON.stringify(['55%', '55%', '36%', '9%'])) throw new Error(`detail card percentage splits were ${JSON.stringify(detailSplits)}`);
+        if (detailCards.some(card => !getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('detail percentage card did not use a proportional gradient');
+        if (api.percentageStyle(0) !== '--percentage:0%' || api.percentageStyle(100) !== '--percentage:100%') throw new Error('0% and 100% gradient endpoints were not supported');
         if (![...doc.querySelectorAll('tbody tr td:nth-last-child(2)')].every(cell => cell.textContent.trim().startsWith('21-Oct-2026'))) throw new Error('table dates did not use selected dd-MMM-yyyy date');
         if ([...doc.querySelectorAll('th')].some(cell => cell.textContent.trim() === 'Actions')) throw new Error('Actions column remained');
         if (doc.querySelectorAll('tbody tr').length !== 10) throw new Error('selected-unit first page did not contain ten records');
@@ -194,6 +200,20 @@
         dialog.querySelector('[data-action="close"]').click();
         await delay(100);
         if (doc.querySelector('dialog[open]')) throw new Error('Close did not close the popup');
+        const missionRow = doc.querySelector('.status-badge.mission').closest('tr');
+        const missionRecordId = missionRow.dataset.recordId;
+        missionRow.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+        await delay(50);
+        dialog = doc.querySelector('dialog[open]');
+        if (!dialog) throw new Error('On Mission row did not reopen the popup');
+        dialog.querySelector('[data-action="modify"]').click();
+        dialog.querySelector('[data-action="save"]').click();
+        await delay(100);
+        if (api.recordsByDate['2026-10-21'].find(record => record.id === missionRecordId).status !== 'On Mission') throw new Error('saving an unchanged On Mission record changed its operational status');
+        const closeUnchanged = doc.querySelector('dialog[open] [data-action="close"]');
+        if (!closeUnchanged) throw new Error('unchanged Save did not keep the popup open in view mode');
+        closeUnchanged.click();
+        await delay(50);
         frame.contentWindow.location.hash = 'dashboard';
         await delay(100);
         doc.getElementById('dashboard-date').value = '2026-10-22';
@@ -251,7 +271,7 @@
           if (rendered !== percentage) throw new Error(`${screen} detail percentage was ${JSON.stringify(rendered)}`);
           if (screen === 'suv' && doc.querySelector('.available-stat b').textContent.trim() !== '62%') throw new Error('All/SUV Available percentage did not retain 62%');
         }
-        report('PASS', '120 fixed records; reconciled units; retained Unit/date; proportional card colors; Fleet Overview separated; themed non-saving row dialog');
+        report('PASS', 'three reconciled date snapshots; formatted dates; retained Unit/date; proportional dashboard/detail cards; themed editable row dialog');
       } catch (error) {
         report('FAIL', error.message);
       }

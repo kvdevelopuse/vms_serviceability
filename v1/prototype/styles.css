@@ -472,3 +472,7 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
 :root[data-theme="dark"] .category-card {
   background: linear-gradient(to right, var(--card-serviceable) 0 var(--serviceability), var(--card-nonserviceable) var(--serviceability) 100%);
 }
+:root[data-theme="light"] .percentage-card,
+:root[data-theme="dark"] .percentage-card {
+  background: linear-gradient(to right, var(--card-serviceable) 0 var(--percentage), var(--card-nonserviceable) var(--percentage) 100%);
+}
