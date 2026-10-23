@@ -163,7 +163,9 @@ h1 { font-size: 44px; line-height: 1.2; letter-spacing: -1.1px; font-weight: 700
 .search-field .icon { font-size: 16px; }
 .status-field { width: 170px; }
 .filter-field { justify-content: center; width: 49px; padding: 11px; color: var(--blue); font-size: 27px; }
-.table-scroll { overflow-x: auto; }
+.table-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.table-scroll:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.table-scroll th { position: sticky; top: 0; z-index: 1; background: var(--surface-soft); }
 table { width: 100%; border-collapse: collapse; font-size: 16px; text-align: left; }
 thead { background: var(--surface-soft); color: var(--secondary); }
 th { height: 50px; padding: 10px 18px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 600; }
@@ -200,6 +202,14 @@ td:nth-child(7) { width: 20%; }
 html[data-screen="dashboard"], html[data-screen="dashboard"] body { width: 100%; height: 100%; overflow: hidden; }
 html[data-screen="dashboard"] body { display: flex; align-items: center; justify-content: center; height: 100dvh; }
 html[data-screen="dashboard"] #app { flex: 0 0 auto; width: 100%; margin: 0; transform: scale(var(--dashboard-scale, 1)); transform-origin: center; }
+
+/* Detail pages fill the viewport; only the vehicle grid scrolls. */
+html:not([data-screen="dashboard"]), html:not([data-screen="dashboard"]) body { height: 100%; overflow: hidden; }
+html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-direction: column; }
+.detail-header { flex: 0 0 auto; }
+.detail { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.detail .summary-grid, .table-toolbar, .table-footer { flex-shrink: 0; }
+.detail .table-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 
 @media (max-width: 1600px) {
   .page-header { padding-left: 32px; padding-right: 32px; }
@@ -320,4 +330,34 @@ html[data-screen="dashboard"] #app { flex: 0 0 auto; width: 100%; margin: 0; tra
   .summary-percent > span, .summary-total span { font-size: 12px; }
   .summary-total strong { font-size: 20px; }
   .pagination { gap: 5px; }
+}
+
+@media (max-width: 800px) {
+  .detail-header { padding: 16px 18px; gap: 12px; }
+  .detail { padding-bottom: 12px; }
+  .detail .summary-main { min-height: 96px; padding: 12px; }
+  .detail .summary-main .vehicle-art { height: 72px; }
+  .detail .summary-stat { min-height: 80px; padding-top: 8px; padding-bottom: 8px; }
+  .detail .table-panel { margin-top: 12px; padding-top: 12px; }
+  .detail .table-footer { gap: 8px; padding-top: 10px; }
+}
+
+@media (max-height: 650px) and (min-width: 801px) {
+  .detail-header { min-height: 0; padding-top: 12px; padding-bottom: 12px; }
+  .detail-header .date { margin-top: 10px; font-size: 14px; }
+  .detail { padding-bottom: 12px; }
+  .detail .summary-grid { grid-template-columns: 2fr repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .detail .summary-main { grid-column: auto; gap: 8px; }
+  .detail .summary-main, .detail .summary-stat { min-height: 84px; padding: 10px; }
+  .detail .summary-main .vehicle-art { height: 64px; }
+  .detail .summary-percent strong { font-size: 34px; }
+  .detail .summary-total strong { font-size: 20px; }
+  .detail .summary-percent > span, .detail .summary-total span, .detail .summary-stat > div > span { font-size: 12px; }
+  .detail .summary-stat { gap: 8px; }
+  .detail .summary-stat .status-icon { width: 28px; height: 28px; flex-basis: 28px; font-size: 20px; }
+  .detail .summary-stat strong { font-size: 24px; }
+  .detail .summary-stat b { font-size: 12px; }
+  .detail .table-panel { margin-top: 12px; padding: 12px 16px; }
+  .detail .table-footer { padding-top: 10px; }
+  .detail .page-size { padding-top: 8px; padding-bottom: 8px; }
 }

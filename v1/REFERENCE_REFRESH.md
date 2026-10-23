@@ -1,5 +1,7 @@
 # Replacement reference update
 
+Subsequent scrolling correction: detail pages now fill the viewport without page scrollbars. Overflow belongs to the vehicle grid, with sticky column headings and keyboard focus; the summary, filters and pagination remain outside its scroll area. Compact layouts reserve more grid space on phones and short screens. This supersedes the earlier statement that detail pages retain normal scrolling.
+
 Subsequent detail correction: all four detail summary cards now reuse the landing-page vehicle artwork, centered between Serviceability and Available / Total in both themes. This supersedes the earlier removal of detail artwork described below.
 
 Subsequent dashboard correction: the user requested clear centered vehicle images and no dashboard scrollbar, with every displayed value preserved. Standalone transparent vehicle images now replace the screenshot crops. The dashboard fits its full content to the viewport and recalculates on resize; detail views retain scrolling. `tests/fixtures/displayed-text-sha256.json` captures the pre-change text of all ten states and verifies it remains unchanged. Asset sources and extraction prompts are recorded in `prototype/assets/IMAGE_SOURCES.txt`. The paragraphs below describe the preceding reference-refresh revision.

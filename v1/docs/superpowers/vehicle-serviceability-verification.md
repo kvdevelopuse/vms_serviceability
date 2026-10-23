@@ -1,6 +1,12 @@
 # Vehicle serviceability verification — replacement images
 
-## Latest dashboard image and viewport correction
+## Latest detail scrolling correction
+
+Detail pages now use a viewport-height flex layout with shrinking content and table containers. The vehicle grid owns horizontal and vertical overflow; summary cards, filters and pagination remain outside it. Column headings stick inside the grid, and the labeled grid region accepts keyboard focus. Phone and short landscape styles reduce surrounding spacing to leave room for rows.
+
+The Node prototype checks and JavaScript syntax checks pass, preserving all displayed-text hashes. The local-file DOM journey check passes for all eight detail/theme combinations, including computed overflow, shrinking containers, sticky headings, keyboard focus and returns to the dashboard. A headless layout check was attempted, but the environment rejected the browser process with EPERM; pixel layout and actual scrolling geometry remain unverified.
+
+## Earlier dashboard image and viewport correction
 
 The user subsequently requested clearer centered dashboard images, no dashboard scrollbar and no displayed value changes. The dashboard now uses three inspected high-resolution transparent vehicle PNGs, with object-fit contain and centered positioning. All Vehicles composes the same assets. Screenshot crops are no longer runtime dependencies.
 

@@ -33,6 +33,9 @@ centered with their complete silhouettes visible. The All Vehicles card
 combines the same three vehicle assets. Sources are in assets/IMAGE_SOURCES.txt.
 The dashboard fits its complete content to the viewport without scrollbars;
 card sizes are compact and the layout refits when the window is resized.
+Detail pages also stay within the viewport. The vehicle grid scrolls
+vertically and horizontally while its column headings, summary cards,
+filters and pagination remain visible. Focus the grid for keyboard scrolling.
 The trend is a fixed illustration traced from the new reference.
 
 Search, status, pagination, row menus and trend-period controls remain
