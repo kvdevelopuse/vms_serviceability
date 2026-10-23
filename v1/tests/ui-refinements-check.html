@@ -3,7 +3,7 @@
 <title>UI refinement browser check</title>
 <body data-result="running">
   <pre id="result">RUNNING</pre>
-  <iframe id="prototype" src="../prototype/index.html" hidden></iframe>
+  <iframe id="prototype" src="../prototype/index.html" style="position:absolute;left:-10000px;top:0;width:1920px;height:1080px;border:0"></iframe>
   <script>
     const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     const expectedPercentages = {all: '70%', sedan: '75%', suv: '63%', 'people-movers': '75%'};
@@ -61,9 +61,12 @@
         if (JSON.stringify(dashboardPercentages) !== JSON.stringify(expectedDashboard)) {
           throw new Error(`dashboard percentages were ${JSON.stringify(dashboardPercentages)}`);
         }
-        const backgrounds = [...doc.querySelectorAll('.category-card')].map(node => getComputedStyle(node).backgroundColor);
-        if (backgrounds.some(background => background !== 'rgb(255, 255, 255)')) {
-          throw new Error(`Light Mode card backgrounds were ${JSON.stringify(backgrounds)}`);
+        const cardStyles = [...doc.querySelectorAll('.category-card')].map(node => getComputedStyle(node));
+        if (cardStyles.some(style => !style.backgroundImage.includes('linear-gradient'))) {
+          throw new Error('category cards did not use proportional linear gradients');
+        }
+        if (JSON.stringify(cardStyles.map(style => style.getPropertyValue('--serviceability').trim())) !== JSON.stringify(['70%', '75%', '63%', '75%'])) {
+          throw new Error('category gradient splits did not match displayed percentages');
         }
         unitSelect.value = 'Unit C';
         unitSelect.dispatchEvent(new Event('change', {bubbles: true}));
@@ -87,7 +90,7 @@
         const beforeDialog = JSON.stringify(api.vehicleRecords);
         doc.querySelector('tbody tr').dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
         await delay(100);
-        const dialog = doc.querySelector('dialog[open]');
+        let dialog = doc.querySelector('dialog[open]');
         if (!dialog) throw new Error('row double-click did not open the dialog');
         const labels = [...dialog.querySelectorAll('label')].map(label => label.childNodes[0].textContent.trim().replace(/:$/, ''));
         const expectedLabels = ['Status', 'Discovered Date', 'Location', 'Deployed', 'Reason for Non-Serviceability'];
@@ -97,7 +100,23 @@
         if (JSON.stringify(optionSets) !== JSON.stringify([['Serviceable', 'Non-Serviceable'], ['Inside Country', 'Outside Country'], ['Yes', 'No']])) {
           throw new Error(`dialog options were ${JSON.stringify(optionSets)}`);
         }
+        if (getComputedStyle(dialog).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor) {
+          throw new Error('Light Mode dialog did not match the detail surface');
+        }
+        if ([...dialog.querySelectorAll('label')].some(label => getComputedStyle(label).display !== 'grid')) {
+          throw new Error('dialog labels and controls were not aligned');
+        }
         dialog.querySelector('textarea').value = 'temporary only';
+        doc.getElementById('theme-toggle').click();
+        await delay(100);
+        dialog = doc.querySelector('dialog[open]');
+        if (doc.documentElement.dataset.theme !== 'dark' || !dialog) throw new Error('dialog did not remain open in Dark Mode');
+        if (getComputedStyle(dialog).backgroundColor !== getComputedStyle(doc.querySelector('.table-panel')).backgroundColor) {
+          throw new Error('Dark Mode dialog did not match the detail surface');
+        }
+        doc.getElementById('theme-toggle').click();
+        await delay(100);
+        dialog = doc.querySelector('dialog[open]');
         dialog.close();
         await delay(100);
         if (JSON.stringify(api.vehicleRecords) !== beforeDialog) throw new Error('dialog changed vehicle records');
@@ -109,6 +128,21 @@
         await delay(100);
         if (doc.querySelector('.category-all .service-percent').textContent.trim() !== '70%' || !doc.querySelector('.category-all').textContent.includes('84 / 120')) {
           throw new Error('All did not restore original dashboard values');
+        }
+        const gridRect = doc.querySelector('.category-grid').getBoundingClientRect();
+        const overviewRect = doc.querySelector('.overview').getBoundingClientRect();
+        if (overviewRect.top - gridRect.bottom < 24) throw new Error(`Fleet Overview gap was ${overviewRect.top - gridRect.bottom}px`);
+        const overviewGraphic = doc.querySelector('.overview-heading > .icon');
+        const overviewGraphicRect = overviewGraphic.getBoundingClientRect();
+        const overviewTextRect = doc.querySelector('.overview-heading > div').getBoundingClientRect();
+        if (overviewGraphic.scrollWidth > overviewGraphic.clientWidth || overviewGraphicRect.right + 12 > overviewTextRect.left) throw new Error('Fleet Overview graphic overlapped its text');
+        for (const image of doc.querySelectorAll('.category-card .vehicle-art img')) {
+          const imageRect = image.getBoundingClientRect();
+          const artRect = image.closest('.vehicle-art').getBoundingClientRect();
+          if (imageRect.left < artRect.left - .5 || imageRect.right > artRect.right + .5 || imageRect.top < artRect.top - .5 || imageRect.bottom > artRect.bottom + .5) {
+            throw new Error(`vehicle image escaped its art area: ${image.className}`);
+          }
+          if (getComputedStyle(image).objectFit !== 'contain') throw new Error('vehicle image was not fitted with contain');
         }
         for (const screen of Object.keys(expectedPercentages)) {
           frame.contentWindow.location.hash = 'dashboard';
@@ -134,7 +168,7 @@
           const rendered = doc.querySelector('.summary-percent').textContent.trim();
           if (rendered !== percentage) throw new Error(`${screen} detail percentage was ${JSON.stringify(rendered)}`);
         }
-        report('PASS', '120 fixed records; reconciled units; retained Unit/date; arrow-only navigation; Actions removed; non-saving row dialog');
+        report('PASS', '120 fixed records; reconciled units; retained Unit/date; proportional card colors; Fleet Overview separated; themed non-saving row dialog');
       } catch (error) {
         report('FAIL', error.message);
       }

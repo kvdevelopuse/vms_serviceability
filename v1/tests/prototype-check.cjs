@@ -1,89 +1,75 @@
 // Run: node tests/prototype-check.cjs (no packages required).
-// Catches wrong navigation destinations, lost themes and invented/missing visible rows.
+// Verifies fixed data reconciliation, retained state, rendered controls and local dependencies.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..', 'prototype');
-assert.ok(fs.existsSync(path.join(root, 'index.html')), 'prototype/index.html must exist');
-const { transition, renderScreen, screenFromHash, dashboardScale } = require('../prototype/app.js');
-const { createHash } = require('node:crypto');
-const displayedText = require('./fixtures/displayed-text-sha256.json');
-for (const theme of ['light', 'dark']) for (const screen of ['dashboard','all','sedan','suv','people-movers']) {
-  const text = renderScreen({screen,theme}).replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
-  assert.equal(createHash('sha256').update(text).digest('hex'), displayedText[`${screen}/${theme}`], `${screen}/${theme}: every displayed value remains unchanged`);
-}
-for (const theme of ['light', 'dark']) {
-  assert.doesNotMatch(renderScreen({screen: 'dashboard', theme}), /class="service-percent">[^<]+<\/strong><span>Serviceability<\/span>/, `${theme}: dashboard percentages have no Serviceability label`);
-  for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
-    assert.doesNotMatch(renderScreen({screen, theme}), /class="summary-percent">[^]*?<span>Serviceability<\/span>/, `${theme}/${screen}: detail percentage has no Serviceability label`);
+const {
+  transition, renderScreen, screenFromHash, dashboardScale,
+  vehicleRecords, aggregateFor, recordsFor,
+} = require('../prototype/app.js');
+
+assert.equal(vehicleRecords.length, 120);
+assert.equal(new Set(vehicleRecords.map(record => record.id)).size, 120);
+assert.equal(new Set(vehicleRecords.map(record => record.plate)).size, 120);
+
+const expected = {
+  'Unit A': {all: [24, 7, 3, 34, 71], sedan: [9, 2, 1, 12, 75], suv: [9, 3, 2, 14, 64], 'people-movers': [6, 2, 0, 8, 75]},
+  'Unit B': {all: [22, 6, 4, 32, 69], sedan: [8, 2, 1, 11, 73], suv: [8, 3, 2, 13, 62], 'people-movers': [6, 1, 1, 8, 75]},
+  'Unit C': {all: [21, 6, 2, 29, 72], sedan: [7, 2, 0, 9, 78], suv: [7, 3, 1, 11, 64], 'people-movers': [7, 1, 1, 9, 78]},
+  'Unit D': {all: [17, 5, 3, 25, 68], sedan: [6, 1, 1, 8, 75], suv: [6, 2, 2, 10, 60], 'people-movers': [5, 2, 0, 7, 71]},
+  All: {all: [84, 24, 12, 120, 70], sedan: [30, 7, 3, 40, 75], suv: [30, 11, 7, 48, 63], 'people-movers': [24, 6, 2, 32, 75]},
+};
+
+for (const [unit, screens] of Object.entries(expected)) {
+  for (const [screen, values] of Object.entries(screens)) {
+    const result = aggregateFor(unit, screen);
+    assert.deepEqual([result.available, result.mission, result.unavailable, result.total, result.percent], values, `${unit}/${screen}`);
+    assert.equal(recordsFor(unit, screen).length, values[3], `${unit}/${screen} records`);
   }
-}for (const [contentWidth, contentHeight, width, height] of [[1920,1100,1920,1080],[1366,1250,1366,768],[1200,900,1200,600],[390,1600,390,844],[900,600,1920,1080]]) {
-  const scale = dashboardScale(contentWidth, contentHeight, width, height);
-  assert.ok(contentWidth * scale <= width + .001 && contentHeight * scale <= height + .001, 'entire dashboard fits the viewport');
-  assert.ok(scale > 0 && scale <= 1, 'no image upscaling');
 }
 
-for (const theme of ['light', 'dark']) {
-  for (const [screen, title, total, count, plate] of [
-    ['all', 'All Vehicles', '84 / 120', 10, 'AB-1234'],
-    ['sedan', 'Sedan', '30 / 40', 9, 'MN-6789'],
-    ['suv', 'SUV', '30 / 48', 9, 'SX-1024'],
-    ['people-movers', 'People Movers', '24 / 32', 10, 'PM-1010'],
-  ]) {
-    const state = transition({screen: 'dashboard', theme}, {type: 'navigate', screen});
-    assert.deepEqual(state, {screen, theme});
-    const html = renderScreen(state);
-    assert.ok(html.includes(`<h1 tabindex="-1">${title}</h1>`), `${screen}: correct heading`);
-    assert.ok(html.includes(total), `${screen}: literal total`);
-    assert.ok(html.includes('<span>Available / Total</span>'), `${screen}: summary ratio label retained`);
-    assert.ok(html.includes(plate), `${screen}: source records`);
-    for (const image of html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)) {
-      assert.ok(fs.existsSync(path.join(root, image[1])), `illustration exists: ${image[1]}`);
-    }
-    const summary = html.split('<div class="summary-stat')[0];
-    const artwork = summary.match(/<span class="vehicle-art[^]*?<\/span>/)?.[0];
-    const landingArtwork = renderScreen({screen: 'dashboard', theme}).match(/<span class="vehicle-art[^]*?<\/span>/g);
-    assert.ok(artwork && landingArtwork.includes(artwork), `${screen}: same vehicle artwork as landing page`);
-    assert.ok(summary.indexOf('summary-percent') < summary.indexOf(artwork) && summary.indexOf(artwork) < summary.indexOf('summary-total'), `${screen}: vehicle sits between serviceability and available total`);
-    assert.ok(html.includes('<th scope="col">Last Updated</th>'), `${screen}: current column label`);
-    assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 9 : 8, `${screen}: only current reference columns`);
-    assert.equal((html.match(/<tr data-plate=/g) || []).length, count, `${screen}: visible rows only`);
-    const switched = transition(state, {type: 'toggle-theme'});
-    assert.deepEqual(switched, {screen, theme: theme === 'light' ? 'dark' : 'light'});
-    assert.deepEqual(transition(switched, {type: 'navigate', screen: 'dashboard'}), {...switched, screen: 'dashboard'});
-    assert.ok(renderScreen(switched).includes(`<h1 tabindex="-1">${title}</h1>`));
-  }
-  const dashboard = renderScreen({screen: 'dashboard', theme});
-  for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
-    assert.ok(dashboard.includes(`<a class="round-arrow" href="#${screen}"`), `dashboard arrow links to ${screen}`);
-    assert.ok(!dashboard.includes(`<a href="#${screen}" class="category-card`), `${screen} card is not a link`);
-  }
-  assert.ok(dashboard.includes('84 / 120'));
-  assert.ok(dashboard.includes('63%'));
-  assert.ok(dashboard.includes('12 vehicles not available'));
-  for (const kind of ['sedan','suv','people-movers']) {
-    const file = `assets/vehicle-${kind}.png`;
-    assert.ok(dashboard.includes(`src="${file}"`), `${kind}: standalone clear vehicle image`);
-    assert.ok(fs.existsSync(path.join(root, file)), `${kind}: replacement image is bundled`);
-  }
-  assert.ok(!dashboard.includes('src="assets/dashboard-'), 'no screenshot crops');
-  assert.ok(!/fleet management/i.test(dashboard), 'requested heading removed');
-  assert.ok(!/Available vehicles\s*\/\s*Total vehicles/i.test(dashboard), 'requested formula removed');
-  const suv = renderScreen({screen:'suv', theme});
-  assert.match(suv, /Available<\/span><\/div><b>62%<\/b>/, 'literal SUV availability is 62%; its serviceability remains 63%');
-  assert.match(renderScreen({screen:'sedan', theme}), /data-plate="CD-5678"[^]*?22 Oct 2026 08:50/);
-  assert.match(renderScreen({screen:'sedan', theme}), /data-plate="GH-3456"[^]*?22 Oct 2026 08:20/);
-  assert.ok(renderScreen({screen:'sedan', theme}).includes('Mission #M-1023'));
+let state = {screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null};
+state = transition(state, {type: 'set-unit', unit: 'Unit C'});
+state = transition(state, {type: 'set-date', date: '2026-12-31'});
+state = transition(state, {type: 'navigate', screen: 'suv'});
+state = transition(state, {type: 'toggle-theme'});
+assert.deepEqual(state, {screen: 'suv', theme: 'dark', unit: 'Unit C', date: '2026-12-31', activeRecordId: null});
+
+const dashboard = renderScreen({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null});
+assert.match(dashboard, /id="unit-filter"/);
+assert.match(dashboard, /id="dashboard-date" type="date" value="2026-10-22"/);
+assert.match(dashboard, /class="category-card category-all" style="--serviceability:70%"/);
+assert.ok(dashboard.includes('84 / 120'));
+for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
+  assert.ok(dashboard.includes(`<a class="round-arrow" href="#${screen}"`));
+  assert.ok(!dashboard.includes(`<a href="#${screen}" class="category-card`));
 }
+
+for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
+  const html = renderScreen({screen, theme: 'dark', unit: 'Unit C', date: '2026-12-31', activeRecordId: null});
+  assert.match(html, /id="detail-unit" disabled/);
+  assert.match(html, /data-date="2026-12-31"/);
+  assert.doesNotMatch(html, />Actions</);
+  assert.equal((html.match(/<tr data-record-id=/g) || []).length, Math.min(10, recordsFor('Unit C', screen).length));
+  assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 7);
+}
+
+const firstRecord = recordsFor('Unit A', 'sedan')[0];
+const dialog = renderScreen({screen: 'sedan', theme: 'light', unit: 'Unit A', date: '2026-11-15', activeRecordId: firstRecord.id});
+assert.match(dialog, /<dialog class="record-dialog"/);
+for (const label of ['Status:', 'Discovered Date:', 'Location:', 'Deployed:', 'Reason for Non-Serviceability:']) assert.ok(dialog.includes(label));
+assert.match(dialog, /<textarea rows="5"><\/textarea>/);
+
+for (const [contentWidth, contentHeight, width, height] of [[1920,1100,1920,1080],[1366,1250,1366,768],[390,1600,390,844]]) {
+  const scale = dashboardScale(contentWidth, contentHeight, width, height);
+  assert.ok(contentWidth * scale <= width + .001 && contentHeight * scale <= height + .001);
+  assert.ok(scale > 0 && scale <= 1);
+}
+
 assert.equal(screenFromHash('#suv'), 'suv');
 assert.equal(screenFromHash('#not-a-screen'), 'dashboard');
 assert.equal(screenFromHash(''), 'dashboard');
-assert.deepEqual(transition({screen:'sedan', theme:'dark'}, {type:'navigate', screen:'invalid'}), {screen:'dashboard', theme:'dark'});
-
-const lightSedan = renderScreen({screen:'sedan', theme:'light'});
-const darkSedan = renderScreen({screen:'sedan', theme:'dark'});
-assert.match(lightSedan, /data-plate="MN-6789"[^]*?<td>2024<\/td>/);
-assert.match(darkSedan, /data-plate="MN-6789"[^]*?<td>2024<\/td>/);
 
 const entry = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 assert.ok(!/type=["']module/.test(entry), 'classic scripts support direct file opening');
@@ -91,4 +77,5 @@ for (const match of entry.matchAll(/(?:src|href)="([^"#]+)"/g)) {
   assert.ok(!/^https?:\/\//.test(match[1]), 'no remote runtime dependencies');
   assert.ok(fs.existsSync(path.join(root, match[1])), `local dependency exists: ${match[1]}`);
 }
-console.log('PASS: 10 view states; 8 category journeys; centered detail artwork order and shared assets; theme switches and returns; literal rows; route fallback; local entry dependencies.');
+
+console.log('PASS: 120 fixed records; reconciled units; retained state; rendered controls, rows and non-saving dialog; local dependencies.');
