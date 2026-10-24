@@ -15,10 +15,12 @@ Choose All, Unit A, Unit B, Unit C or Unit D and select 20-Oct-2026,
 dd-MMM-yyyy while the native date selectors remain available.
 Open All Vehicles, Sedan, SUV or People Movers with the circular arrow.
 Card bodies are static and have no selection border; Fleet Overview remains
-the overall fleet view. Option 1 uses the emerald/ice-blue CardColor reference design;
+the overall fleet view. Option 1 uses category-colored progressive fills across
+all four landing cards and the first Serviceability card on each detail screen;
 Option 2 follows esnaad_style/option2.png: each category has its own light tint
 and accent, serviceability is centered in a large progress ring, and Available
-and Total values sit in separate count tiles. Dark Mode uses matching deep tints.
+and Total values sit in separate count tiles. Dark Mode uses the approved navy
+palette and restrained category tints.
 The SUV alert ring is red at 63%, while serviceable values use green.
 The horizontal options are centered
 on the heading/date row.
@@ -28,9 +30,9 @@ The selected category, design, Unit and date remain set
 on detail pages. Use the circular Back control to return to the dashboard.
 The detail Unit is shown in a disabled, theme-aware text field. Choosing
 another dashboard Unit updates this display and the existing Unit filter.
-Dark Mode / Light Mode switches the current screen and remains selected
-while navigating. Reload restores All Vehicles, Option 1, All Units,
-22-Oct-2026 and Light Mode. Arrow navigation slides into its detail screen;
+Dark Mode / Light Mode switches the current screen, remains selected while
+navigating, and persists after refresh. Reload restores All Vehicles, Option 1,
+All Units and 22-Oct-2026 while retaining the stored theme. Arrow navigation slides into its detail screen;
 reduced-motion preferences disable the slide.
 
 On a detail page, select Serviceability, On Mission or Not Available to filter

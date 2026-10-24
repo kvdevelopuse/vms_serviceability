@@ -190,7 +190,25 @@ const recordsByDate = {
   [REFERENCE_DATE]: vehicleRecords,
 };
 const STORAGE_KEY = 'vms-serviceability-record-edits-v1';
+const THEME_STORAGE_KEY = 'vms-serviceability-theme-v1';
 let savedRecordEdits = {};
+
+function readStoredTheme(storage) {
+  try {
+    const theme = storage?.getItem(THEME_STORAGE_KEY);
+    return theme === 'dark' || theme === 'light' ? theme : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+function persistTheme(storage, theme) {
+  try {
+    storage?.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Theme switching still works for the current page when storage is unavailable.
+  }
+}
 
 function savedRecordKey(date, recordId) {
   return `${date}|${recordId}`;
@@ -430,9 +448,9 @@ function vehicleArt(kind) {
 function dashboard(state) {
   const cards = Object.keys(fleet).map(key => {
     const data = displayData(state.unit, key, state.date);
-    const option1LightFill = state.designOption === '1' && state.theme === 'light';
-    const serviceability = option1LightFill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption);
-    return `<article class="category-card category-${key}${option1LightFill ? ' option1-fill' : ''}" data-category="${key}" style="--serviceability:${data.percent}%">
+    const option1Fill = state.designOption === '1';
+    const serviceability = option1Fill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption);
+    return `<article class="category-card category-${key}${option1Fill ? ' option1-fill' : ''}" data-category="${key}" style="--serviceability:${data.percent}%">
       <div class="category-numbers"><div>${serviceability}</div><div class="category-total">${countValue(data.available, data.total, state.designOption)}</div></div>
       ${vehicleArt(key)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
@@ -495,17 +513,17 @@ function trendChart(state) {
     <defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08a875" stop-opacity=".28"/><stop offset="1" stop-color="#08a875" stop-opacity=".04"/></linearGradient></defs>
     <g class="chart-grid"><path d="M80 24H615M80 69H615M80 114H615M80 159H615M80 204H615M80 24V204M200 24V204M320 24V204M440 24V204M560 24V204"/></g>
     <g class="chart-labels"><text x="59" y="30" text-anchor="end">100%</text><text x="59" y="75" text-anchor="end">75%</text><text x="59" y="120" text-anchor="end">50%</text><text x="59" y="165" text-anchor="end">25%</text><text x="59" y="210" text-anchor="end">0%</text>${coordinates.map(point => `<text x="${point.x}" y="237" text-anchor="${point.x > 600 ? 'end' : 'middle'}">${formatDate(point.date)}</text>`).join('')}</g>
-    ${points.length > 1 ? `<path d="M${line}V204H80Z" fill="url(#trend-fill)"/><path d="M${line}" fill="none" stroke="#08a875" stroke-width="4" stroke-linejoin="round"/>` : ''}
-    <g fill="#08a875" stroke="var(--surface)" stroke-width="2">${coordinates.map(point => `<circle cx="${point.x}" cy="${point.y}" r="7"><title>${formatDate(point.date)}: ${point.percent}%</title></circle>`).join('')}</g>
+    ${points.length > 1 ? `<path class="trend-area" d="M${line}V204H80Z" fill="url(#trend-fill)"/><path class="trend-line" d="M${line}" fill="none" stroke="var(--trend-line)" stroke-width="4" stroke-linejoin="round"/>` : ''}
+    <g class="trend-points" fill="var(--trend-line)" stroke="var(--surface)" stroke-width="2">${coordinates.map(point => `<circle cx="${point.x}" cy="${point.y}" r="7"><title>${formatDate(point.date)}: ${point.percent}%</title></circle>`).join('')}</g>
     <g class="chart-point-labels">${coordinates.slice(0, -1).map(point => `<text x="${point.x}" y="${point.y - 14}" text-anchor="middle">${point.percent}%</text>`).join('')}</g>
-    <rect x="580" y="2" width="55" height="32" rx="6" fill="#08a875"/><text x="607" y="25" text-anchor="middle" fill="white" font-size="24" font-weight="700">${last.percent}%</text>
+    <rect x="580" y="2" width="55" height="32" rx="6" fill="var(--trend-line)"/><text x="607" y="25" text-anchor="middle" fill="var(--trend-label-text)" font-size="24" font-weight="700">${last.percent}%</text>
   </svg>`;
 }
 
 function summary(screen, state) {
   const data = displayData(state.unit, screen, state.date);
   const option2 = usesOption2Design(state.designOption);
-  const option1LightFill = state.designOption === '1' && state.theme === 'light';
+  const option1Fill = state.designOption === '1';
   const primaryFilter = option2 ? 'all' : 'serviceability';
   const filterClass = filter => `summary-filter${state.statusFilter === filter ? ' active' : ''}`;
   const filterAttributes = filter => `data-summary-filter="${filter}" role="button" tabindex="0" aria-pressed="${state.statusFilter === filter}"`;
@@ -514,7 +532,7 @@ function summary(screen, state) {
     : countValue(data.available, data.total, state.designOption);
   const available = option2 ? `<div class="summary-stat available-stat ${filterClass('available')}" ${filterAttributes('available')}><span class="status-icon available-icon">${icon('detail-available')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.percent}%</b></div>` : '';
   return `<section class="summary-grid${option2 ? ' option2-detail-summary' : ''}" aria-label="${data.title} serviceability summary">
-    <div class="summary-main percentage-card${option1LightFill ? ' option1-fill' : ''} ${filterClass(primaryFilter)}" ${filterAttributes(primaryFilter)} style="${percentageStyle(data.percent)}"><div class="summary-percent">${option1LightFill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption)}</div>
+    <div class="summary-main percentage-card${option1Fill ? ' option1-fill' : ''} ${filterClass(primaryFilter)}" ${filterAttributes(primaryFilter)} style="${percentageStyle(data.percent)}"><div class="summary-percent">${option1Fill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption)}</div>
     ${vehicleArt(screen)}
     <div class="summary-total">${total}</div></div>
     ${available}
@@ -592,13 +610,13 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle, trendData};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, THEME_STORAGE_KEY, readStoredTheme, persistTheme, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle, trendData};
 }
 
 if (typeof document !== 'undefined') {
   reloadSavedRecords(window.localStorage);
-  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle, trendData};
-  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, selectedCategory: 'all', designOption: '1'};
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, THEME_STORAGE_KEY, readStoredTheme, persistTheme, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle, trendData};
+  let state = {screen: screenFromHash(location.hash), theme: readStoredTheme(window.localStorage), unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, selectedCategory: 'all', designOption: '1'};
   const app = document.getElementById('app');
   function fitDashboard() {
     if (state.screen === 'dashboard') {
@@ -639,6 +657,7 @@ if (typeof document !== 'undefined') {
   app.addEventListener('click', event => {
     if (event.target.closest('#theme-toggle')) {
       state = transition(state, {type: 'toggle-theme'});
+      persistTheme(window.localStorage, state.theme);
       paint();
       document.getElementById('theme-toggle').focus({preventScroll: true});
       return;

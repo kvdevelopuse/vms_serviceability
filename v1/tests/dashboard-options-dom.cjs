@@ -9,10 +9,60 @@ const {JSDOM, VirtualConsole} = qaRequire('jsdom');
 const root = path.resolve(__dirname, '../prototype');
 // This asserts the actual computed wrapping policy, not layout geometry.
 const {renderScreen} = require('../prototype/app.js');
+const persistedThemeFixture = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {url:'https://theme.test/',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
+persistedThemeFixture.window.matchMedia = () => ({matches:true});
+persistedThemeFixture.window.scrollTo = () => {};
+persistedThemeFixture.window.localStorage.setItem('vms-serviceability-theme-v1', 'dark');
+persistedThemeFixture.window.eval(fs.readFileSync(path.join(root, 'app.js'), 'utf8'));
+assert.equal(persistedThemeFixture.window.document.documentElement.dataset.theme, 'dark');
+persistedThemeFixture.window.document.querySelector('#theme-toggle').click();
+assert.equal(persistedThemeFixture.window.document.documentElement.dataset.theme, 'light');
+assert.equal(persistedThemeFixture.window.localStorage.getItem('vms-serviceability-theme-v1'), 'light');
+persistedThemeFixture.window.close();
 const headerStyleFixture = new JSDOM(`<html data-theme="light" data-design="2"><body>${renderScreen({screen:'dashboard',theme:'light',unit:'All',date:'2026-10-22',designOption:'2'})}</body></html>`, {virtualConsole: new VirtualConsole()});
 const stylesheet = headerStyleFixture.window.document.createElement('style');
 stylesheet.textContent = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 headerStyleFixture.window.document.head.append(stylesheet);
+const darkDashboardFixture = new JSDOM(`<html data-theme="dark" data-design="2"><body>${renderScreen({screen:'dashboard',theme:'dark',unit:'All',date:'2026-10-22',designOption:'2'})}</body></html>`, {virtualConsole:new VirtualConsole()});
+const darkDashboardStyle = darkDashboardFixture.window.document.createElement('style');
+darkDashboardStyle.textContent = stylesheet.textContent;
+darkDashboardFixture.window.document.head.append(darkDashboardStyle);
+const darkRoot = darkDashboardFixture.window.getComputedStyle(darkDashboardFixture.window.document.documentElement);
+for (const [property, value] of Object.entries({
+  '--bg-page':'#07111B','--bg-header':'#07111B','--bg-section':'#0A1824','--bg-panel':'#0D1D2B','--bg-panel-elevated':'#122536','--bg-control':'#102131','--bg-control-hover':'#172D3F','--bg-table-header':'#102536','--bg-table-row':'#0D1D2B','--bg-table-row-alt':'#102131','--bg-modal':'#0D1D2B','--border-primary':'#294055','--border-secondary':'#1D3447','--divider':'#203749','--text-primary':'#F4F7FA','--text-secondary':'#C4D0DB','--text-muted':'#8FA2B3','--text-disabled':'#607587','--accent-blue':'#00B7FF','--accent-orange':'#FFB000','--accent-purple':'#8A4DFF','--accent-green':'#00D99B','--accent-mint':'#64F2C5','--accent-red':'#FF4D64','--accent-yellow':'#FFC31A'
+})) assert.equal(darkRoot.getPropertyValue(property).trim(), value, property);
+const darkView = darkDashboardFixture.window;
+const darkDoc = darkView.document;
+assert.equal(darkView.getComputedStyle(darkDoc.body).backgroundColor, 'rgb(7, 17, 27)');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.page-header')).backgroundColor, 'rgb(7, 17, 27)');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.overview')).backgroundColor, 'rgb(10, 24, 36)');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.overview-panel')).backgroundColor, 'rgb(13, 29, 43)');
+assert.deepEqual([...darkDoc.querySelectorAll('.category-card')].map(card => darkView.getComputedStyle(card).backgroundColor), ['rgba(0, 183, 255, 0.16)','rgba(255, 176, 0, 0.16)','rgba(138, 77, 255, 0.16)','rgba(0, 217, 155, 0.16)']);
+assert.deepEqual([...darkDoc.querySelectorAll('.category-label > .icon')].map(icon => darkView.getComputedStyle(icon).backgroundColor), ['rgb(0, 183, 255)','rgb(255, 176, 0)','rgb(138, 77, 255)','rgb(0, 217, 155)']);
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.trend-current')).color, 'rgb(100, 242, 197)');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.chart-grid')).stroke, '#203749');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.chart-labels')).fill, '#8FA2B3');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.insight-serviceability')).backgroundColor, 'rgba(255, 77, 100, 0.18)');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.insight-mission')).backgroundColor, 'rgba(0, 183, 255, 0.16)');
+assert.equal(darkView.getComputedStyle(darkDoc.querySelector('.insight-unavailable')).backgroundColor, 'rgba(255, 195, 26, 0.17)');
+darkDashboardFixture.window.close();
+
+const darkDetailFixture = new JSDOM(`<html data-theme="dark" data-design="2"><body>${renderScreen({screen:'all',theme:'dark',unit:'All',date:'2026-10-22',designOption:'2',activeRecordId:'LEG-AB-1234'})}</body></html>`, {virtualConsole:new VirtualConsole()});
+const darkDetailStyle = darkDetailFixture.window.document.createElement('style');
+darkDetailStyle.textContent = stylesheet.textContent;
+darkDetailFixture.window.document.head.append(darkDetailStyle);
+const darkDetailView = darkDetailFixture.window;
+const darkDetailDoc = darkDetailView.document;
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('.table-panel')).backgroundColor, 'rgb(13, 29, 43)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('thead')).backgroundColor, 'rgb(16, 37, 54)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('tbody tr:nth-child(odd)')).backgroundColor, 'rgb(13, 29, 43)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('tbody tr:nth-child(even)')).backgroundColor, 'rgb(16, 33, 49)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('.static-field')).backgroundColor, 'rgb(16, 33, 49)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('.page-arrow')).backgroundColor, 'rgb(16, 33, 49)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('.record-dialog')).backgroundColor, 'rgb(13, 29, 43)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('.record-dialog select')).backgroundColor, 'rgb(16, 33, 49)');
+assert.equal(darkDetailView.getComputedStyle(darkDetailDoc.querySelector('[data-action="modify"]')).backgroundColor, 'rgb(0, 183, 255)');
+darkDetailFixture.window.close();
 assert.equal(headerStyleFixture.window.getComputedStyle(headerStyleFixture.window.document.querySelector('h1')).overflowWrap, 'anywhere', 'long heading words must wrap inside narrow header columns');
 assert.equal(headerStyleFixture.window.getComputedStyle(headerStyleFixture.window.document.querySelector('.category-label')).position, 'static', 'Option 2 arrow must be positioned against the full card, not the title row');
 assert.equal(headerStyleFixture.window.getComputedStyle(headerStyleFixture.window.document.querySelector('.round-arrow')).position, 'absolute');
@@ -35,6 +85,11 @@ option1Style.textContent = stylesheet.textContent;
 option1Fixture.window.document.head.append(option1Style);
 assert.equal(option1Fixture.window.getComputedStyle(option1Fixture.window.document.querySelector('.category-card')).overflow, 'hidden', 'vehicle artwork must stay inside every card');
 assert.equal(option1Fixture.window.document.querySelectorAll('.card-select, .category-card.is-selected').length, 0, 'cards have no selection control or selection border state');
+option1Fixture.window.document.documentElement.dataset.theme = 'dark';
+const darkOption1Arrow = option1Fixture.window.getComputedStyle(option1Fixture.window.document.querySelector('.round-arrow'));
+assert.equal(darkOption1Arrow.position, 'absolute', 'Option 1 dark landing arrows stay anchored to the card bottom');
+assert.equal(darkOption1Arrow.bottom, '12px', 'Option 1 dark landing arrows match the light-mode bottom position');
+assert.equal(option1Fixture.window.getComputedStyle(option1Fixture.window.document.querySelector('.category-label')).position, 'static', 'Option 1 dark arrows must be positioned against the full card, not the title row');
 option1Fixture.window.close();
 for (const theme of ['light', 'dark']) {
   for (const screen of ['dashboard', 'suv']) {
@@ -46,7 +101,7 @@ for (const theme of ['light', 'dark']) {
       return fixture;
     });
     const selector = screen === 'dashboard' ? '.category-suv' : '.summary-main';
-    const properties = ['border', 'display', 'gridTemplateColumns', 'minHeight', ...(theme === 'light' ? [] : ['background'])];
+    const properties = ['border', 'display', 'gridTemplateColumns', 'minHeight'];
     const computed = fixtures.map(fixture => fixture.window.getComputedStyle(fixture.window.document.querySelector(selector)));
     for (const property of properties) assert.equal(computed[1][property], computed[0][property], `Option 1 ${theme}/${screen} ${property} matches Option 2`);
     fixtures.forEach(fixture => fixture.window.close());
@@ -108,7 +163,7 @@ for (const theme of ['light', 'dark']) {
     const card = fixture.window.document.querySelector(screen==='dashboard' ? '.category-sedan' : '.summary-main');
     // jsdom retains var() references; the real-browser journey checks resolved colors.
     const palette=fixture.window.getComputedStyle(card);
-    const expectedSurface = screen === 'dashboard' ? (theme==='light' ? '#fff8eb' : '#382918') : ({all:theme==='light' ? '#eff8ff' : '#132d42',sedan:theme==='light' ? '#fff8eb' : '#382918',suv:theme==='light' ? '#f6f2ff' : '#2b2344','people-movers':theme==='light' ? '#eefcf7' : '#15362e'}[screen]);
+    const expectedSurface = screen === 'dashboard' ? (theme==='light' ? '#fff8eb' : 'rgba(255, 176, 0, 0.16)') : ({all:theme==='light' ? '#eff8ff' : 'rgba(0, 183, 255, 0.16)',sedan:theme==='light' ? '#fff8eb' : 'rgba(255, 176, 0, 0.16)',suv:theme==='light' ? '#f6f2ff' : 'rgba(138, 77, 255, 0.16)','people-movers':theme==='light' ? '#eefcf7' : 'rgba(0, 217, 155, 0.16)'}[screen]);
     const surface = palette.getPropertyValue('--option2-surface').trim() || fixture.window.getComputedStyle(fixture.window.document.documentElement).getPropertyValue('--option2-surface').trim();
     assert.equal(surface, expectedSurface);
     assert.equal(fixture.window.getComputedStyle(card).background, 'var(--option2-surface)', `${theme}/${screen} landing/detail card color parity`);
@@ -139,7 +194,7 @@ for (const theme of ['light', 'dark']) {
       const totalStyle = fixture.window.getComputedStyle(fixture.window.document.querySelector('.summary-main > .summary-total'));
       assert.equal(totalStyle.alignSelf, 'center');
       assert.equal(totalStyle.justifySelf, 'center');
-      assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.mission-stat strong')).color, theme === 'light' ? 'rgb(240, 145, 0)' : 'rgb(255, 190, 92)');
+      assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.mission-stat strong')).color, theme === 'light' ? 'rgb(240, 145, 0)' : 'rgb(255, 195, 26)');
       assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.summary-stat .status-icon')).width, '76px');
       for (const statusCard of fixture.window.document.querySelectorAll('.summary-stat')) {
         assert.equal(fixture.window.getComputedStyle(statusCard).gridTemplateColumns, '76px max-content max-content');
@@ -192,7 +247,15 @@ for (const theme of ['light', 'dark']) {
           assert.equal(activeStyle.outlineOffset, '-3px', `${screen}/${theme}/${designOption}/${statusFilter} all selection edges stay in bounds`);
           if (option2Design) {
             assert.equal(activeStyle.borderTopWidth, '2px');
-            assert.equal(activeStyle.borderTopColor, theme === 'light' ? 'rgb(8, 124, 255)' : 'rgb(42, 178, 223)');
+            const lightBorder = statusFilter === 'all'
+              ? {all:'rgb(17, 140, 240)', sedan:'rgb(255, 150, 0)', suv:'rgb(123, 69, 245)', 'people-movers':'rgb(8, 166, 115)'}[screen]
+              : {available:'rgb(8, 168, 117)', mission:'rgb(240, 145, 0)', unavailable:'rgb(223, 21, 45)'}[statusFilter];
+            if (statusFilter === 'all') {
+              const accent = activeStyle.getPropertyValue('--option2-accent').trim() || fixture.window.getComputedStyle(fixture.window.document.documentElement).getPropertyValue('--option2-accent').trim();
+              assert.equal(accent, theme === 'light' ? {all:'#118cf0', sedan:'#ff9600', suv:'#7b45f5', 'people-movers':'#08a673'}[screen] : {all:'#00B7FF', sedan:'#FFB000', suv:'#8A4DFF', 'people-movers':'#00D99B'}[screen]);
+            } else {
+              assert.equal(activeStyle.borderTopColor, theme === 'light' ? lightBorder : {available:'rgb(0, 217, 155)', mission:'rgb(255, 195, 26)', unavailable:'rgb(255, 77, 100)'}[statusFilter]);
+            }
           }
         }
       }
@@ -234,7 +297,7 @@ const navigate = async selector => {
       if (doc.documentElement.dataset.theme !== theme) click('#theme-toggle');
       for (const option of ['1', '2']) {
         const option2Design = option !== '3';
-        const option1LightFill = option === '1' && theme === 'light';
+        const option1Fill = option === '1';
         change('[name="dashboard-design"][value="' + option + '"]', option);
         assert.equal(doc.documentElement.dataset.design, option);
         for (const category of ['all','sedan','suv','people-movers']) {
@@ -249,7 +312,7 @@ const navigate = async selector => {
           assert.equal(query('.status-share-mission').textContent, '20%');
           assert.equal(query('.status-share-unavailable').textContent, '10%');
           assert.equal(doc.querySelectorAll('.count-ring').length, 0);
-          assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? (option1LightFill ? 0 : 4) : 0);
+          assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? (option1Fill ? 0 : 4) : 0);
           assert.equal(doc.querySelectorAll('.option2-stat').length, option2Design ? 8 : 0);
         }
       }
@@ -303,7 +366,7 @@ const navigate = async selector => {
         assert.equal(query('h1').textContent, {all:'All Vehicles', sedan:'Sedan', suv:'SUV', 'people-movers':'People Movers'}[category]);
         assert.equal(doc.querySelectorAll('.summary-filter').length, option2Design ? 4 : 3);
         assert.equal(doc.querySelectorAll('.available-stat').length, option2Design ? 1 : 0);
-        assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? 1 : 0);
+        assert.equal(doc.querySelectorAll('.service-ring').length, option === '2' ? 1 : 0);
         assert.equal(query('.summary-main').dataset.summaryFilter, option2Design ? 'all' : 'serviceability');
         assert.equal(doc.querySelectorAll('.status-field').length, option2Design ? 0 : 1);
         assert.equal(doc.querySelectorAll('.status-badge i').length, option2Design && category !== 'all' ? 0 : doc.querySelectorAll('tbody tr').length);

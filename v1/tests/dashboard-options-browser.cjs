@@ -9,7 +9,9 @@ const qaRequire = createRequire(path.resolve(process.env.VMS_QA_MODULE_ROOT || '
 const {chromium} = qaRequire('playwright');
 const root = path.resolve(__dirname, '..');
 const artifacts = path.join(root, '.rollback/dashboard-ui-work');
+const darkArtifacts = path.join(root, '.rollback/options-1-2-dark-mode-work');
 fs.mkdirSync(artifacts, {recursive: true});
+fs.mkdirSync(darkArtifacts, {recursive: true});
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jsx': 'text/plain', '.md': 'text/plain'};
 const server = http.createServer((request, response) => {
   const filename = path.resolve(root, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname));
@@ -71,7 +73,7 @@ const server = http.createServer((request, response) => {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
       for (const option of ['1', '2']) {
         const option2Design = option !== '3';
-        const option1LightFill = option === '1' && theme === 'light';
+        const option1Fill = option === '1';
         await design(option);
         for (const category of ['all','sedan','suv','people-movers']) {
           await card(category).click();
@@ -79,22 +81,31 @@ const server = http.createServer((request, response) => {
           await assertOverview();
         }
         assert.equal(await page.locator('.count-ring').count(), 0);
-        assert.equal(await page.locator('.service-ring').count(), option2Design ? (option1LightFill ? 0 : 4) : 0);
+        assert.equal(await page.locator('.service-ring').count(), option2Design ? (option1Fill ? 0 : 4) : 0);
         assert.equal(await page.locator('.option2-stat').count(), option2Design ? 8 : 0);
         if (option2Design) {
-          if (!option1LightFill) await assertRingCenters();
+          if (!option1Fill) await assertRingCenters();
           const backgrounds = await page.locator('.category-card').evaluateAll(cards => cards.map(card => getComputedStyle(card).backgroundColor));
-          const expected = theme==='light' ? ['rgb(239, 248, 255)','rgb(255, 248, 235)','rgb(246, 242, 255)','rgb(238, 252, 247)'] : ['rgb(19, 45, 66)','rgb(56, 41, 24)','rgb(43, 35, 68)','rgb(21, 54, 46)'];
-          if (option1LightFill) {
+          const expected = theme==='light' ? ['rgb(239, 248, 255)','rgb(255, 248, 235)','rgb(246, 242, 255)','rgb(238, 252, 247)'] : ['rgba(0, 183, 255, 0.16)','rgba(255, 176, 0, 0.16)','rgba(138, 77, 255, 0.16)','rgba(0, 217, 155, 0.16)'];
+          if (option1Fill && theme === 'light') {
             const fills = await page.locator('.category-card').evaluateAll(cards => cards.map(card => getComputedStyle(card).backgroundImage));
             const colors = ['239, 248, 255', '255, 248, 235', '246, 242, 255', '238, 252, 247'];
             const percents = [70, 75, 63, 75];
             fills.forEach((fill, index) => assert.match(fill, new RegExp(`linear-gradient\\(to right, rgb\\(${colors[index]}\\) 0px, rgb\\(${colors[index]}\\) ${percents[index]}%, rgb\\(255, 255, 255\\) ${percents[index]}%, rgb\\(255, 255, 255\\) 100%\\)`)));
+          } else if (option1Fill) {
+            assert.deepEqual(backgrounds, Array(4).fill('rgb(13, 29, 43)'));
+            const fills = await page.locator('.category-card').evaluateAll(cards => cards.map(card => {
+              const cardBox = card.getBoundingClientRect();
+              const fill = getComputedStyle(card, '::before');
+              return {color: fill.backgroundColor, ratio: Math.round(parseFloat(fill.width) / cardBox.width * 100)};
+            }));
+            assert.deepEqual(fills.map(fill => fill.color), expected);
+            assert.deepEqual(fills.map(fill => fill.ratio), [70, 75, 63, 75]);
           } else {
             assert.equal(new Set(backgrounds).size, 4, 'reference design uses a distinct tint for every category');
             assert.deepEqual(backgrounds, expected);
           }
-          if (!option1LightFill) {
+          if (!option1Fill) {
             const ringStyle = await page.locator('.service-ring').first().evaluate(node => ({image: getComputedStyle(node).backgroundImage, radius: getComputedStyle(node).borderRadius}));
             assert.match(ringStyle.image, /conic-gradient/);
             assert.equal(ringStyle.radius, '50%');
@@ -109,7 +120,82 @@ const server = http.createServer((request, response) => {
 
     if (process.argv.includes('--landing-only')) {
       assert.deepEqual(errors, []);
-      console.log('PASS: landing cards in all designs/themes, including all Option 1 light card fills.');
+      console.log('PASS: landing cards in all designs/themes, including Option 1 progressive fills.');
+      return;
+    }
+
+    if (process.argv.includes('--dark-visual-only')) {
+      if (await page.locator('html').getAttribute('data-theme') !== 'dark') await page.locator('#theme-toggle').click();
+      assert.equal(await page.evaluate(() => localStorage.getItem('vms-serviceability-theme-v1')), 'dark');
+      await page.reload();
+      assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+      await page.locator('#theme-toggle').hover();
+      assert.equal(await page.locator('#theme-toggle').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(23, 45, 63)');
+      await page.mouse.move(0, 0);
+      await page.locator('#theme-toggle').focus();
+      assert.equal(await page.locator('#theme-toggle').evaluate(node => getComputedStyle(node).outlineColor), 'rgb(0, 183, 255)');
+      const percents = {all:70, sedan:75, suv:63, 'people-movers':75};
+      for (const option of ['1', '2']) {
+        await design(option);
+        const pageFits = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight);
+        assert.equal(pageFits, true, `dark Option ${option} landing must fit 1920x1080`);
+        await page.screenshot({path:path.join(darkArtifacts, `dark-option-${option}-landing-1920x1080.png`), fullPage:false});
+        for (const [category, percent] of Object.entries(percents)) {
+          await arrow(category).click();
+          await page.waitForSelector(`.detail-${category}`);
+          await page.locator('main').evaluate(node => Promise.all(node.getAnimations().map(animation => animation.finished)));
+          assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+          const geometry = await page.evaluate(() => {
+            const root = document.documentElement;
+            const summary = document.querySelector('.summary-grid').getBoundingClientRect();
+            const table = document.querySelector('.table-panel').getBoundingClientRect();
+            return {
+              fits: root.scrollWidth <= innerWidth && root.scrollHeight <= innerHeight,
+              summaryVisible: summary.left >= 0 && summary.right <= innerWidth && summary.top >= 0 && summary.bottom <= innerHeight,
+              tableVisible: table.left >= 0 && table.right <= innerWidth && table.top >= 0 && table.bottom <= innerHeight,
+            };
+          });
+          assert.deepEqual(geometry, {fits:true, summaryVisible:true, tableVisible:true}, `dark Option ${option}/${category} must fit 1920x1080`);
+          for (const filter of ['all', 'available', 'mission', 'unavailable']) {
+            await page.locator(`[data-summary-filter="${filter}"]`).click();
+            assert.equal(await page.locator(`[data-summary-filter="${filter}"]`).getAttribute('aria-pressed'), 'true');
+          }
+          await page.locator('[data-summary-filter="all"]').click();
+          assert.equal(await page.locator('.summary-main .service-ring').count(), option === '2' ? 1 : 0);
+          if (option === '1') {
+            const fill = await page.locator('.summary-main').evaluate(card => {
+              const box = card.getBoundingClientRect();
+              const pseudo = getComputedStyle(card, '::before');
+              return {base:getComputedStyle(card).backgroundColor, ratio:Math.round(parseFloat(pseudo.width) / box.width * 100), color:pseudo.backgroundColor};
+            });
+            assert.equal(fill.base, 'rgb(13, 29, 43)');
+            assert.equal(fill.ratio, percent);
+            assert.equal(fill.color, {all:'rgba(0, 183, 255, 0.16)',sedan:'rgba(255, 176, 0, 0.16)',suv:'rgba(138, 77, 255, 0.16)','people-movers':'rgba(0, 217, 155, 0.16)'}[category]);
+          } else {
+            await assertRingCenters();
+          }
+          if (option === '1' && category === 'all') {
+            assert.equal(await page.locator('.page-arrow:disabled').evaluate(node => getComputedStyle(node).color), 'rgb(96, 117, 135)');
+            await page.locator('[data-page-action="next"]').click();
+            assert.equal((await page.locator('.page-status').innerText()).trim(), 'Page 2 of 12');
+            await page.locator('[data-page-action="previous"]').click();
+            await page.locator('tbody tr').first().dblclick();
+            const dialog = page.locator('.record-dialog');
+            assert.equal(await dialog.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(13, 29, 43)');
+            assert.equal(await dialog.locator('select').first().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(16, 33, 49)');
+            await dialog.locator('[data-action="modify"]').click();
+            assert.equal(await dialog.locator('[data-action="save"]').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(0, 183, 255)');
+            await dialog.locator('[data-action="cancel"]').click();
+            await page.locator('.record-dialog [data-action="close"]').click();
+          }
+          await page.screenshot({path:path.join(darkArtifacts, `dark-option-${option}-${category}-detail-1920x1080.png`), fullPage:false});
+          await page.locator('.back-button').click();
+          await page.waitForSelector('.dashboard');
+          await page.locator('main').evaluate(node => Promise.all(node.getAnimations().map(animation => animation.finished)));
+        }
+      }
+      assert.deepEqual(errors, []);
+      console.log('PASS: dark Options 1/2 landing and all detail screens fit 1920x1080; theme persists; progressive fills and circular indicators are correct.');
       return;
     }
 
@@ -132,6 +218,29 @@ const server = http.createServer((request, response) => {
       }
       assert.deepEqual(errors, []);
       console.log('PASS: Option 1 light detail Serviceability card fill; all other detail cards unchanged.');
+      return;
+    }
+
+    if (process.argv.includes('--selected-borders-only')) {
+      if (await page.locator('html').getAttribute('data-theme') !== 'light') await page.locator('#theme-toggle').click();
+      const serviceabilityBorders = {all:'rgb(17, 140, 240)', sedan:'rgb(255, 150, 0)', suv:'rgb(123, 69, 245)', 'people-movers':'rgb(8, 166, 115)'};
+      const statusBorders = {available:'rgb(8, 168, 117)', mission:'rgb(240, 145, 0)', unavailable:'rgb(223, 21, 45)'};
+      for (const option of ['1', '2']) {
+        await design(option);
+        for (const category of Object.keys(serviceabilityBorders)) {
+          await arrow(category).click();
+          await page.waitForSelector(`.detail-${category}`);
+          for (const filter of ['all', 'available', 'mission', 'unavailable']) {
+            await page.locator(`[data-summary-filter="${filter}"]`).click();
+            const border = await page.locator('.summary-filter.active').evaluate(card => getComputedStyle(card).borderTopColor);
+            assert.equal(border, filter === 'all' ? serviceabilityBorders[category] : statusBorders[filter], `${option}/${category}/${filter}`);
+          }
+          await page.locator('.back-button').click();
+          await page.waitForSelector('.dashboard');
+        }
+      }
+      assert.deepEqual(errors, []);
+      console.log('PASS: Option 1 and Option 2 selected detail borders match their card colors.');
       return;
     }
 
@@ -183,10 +292,10 @@ const server = http.createServer((request, response) => {
         await page.waitForSelector(`.detail-${category}`);
         assert.equal(await page.locator('.summary-filter').count(), option2Design ? 4 : 3);
         assert.equal(await page.locator('.available-stat').count(), option2Design ? 1 : 0);
-        assert.equal(await page.locator('.service-ring').count(), option2Design ? 1 : 0);
+        assert.equal(await page.locator('.service-ring').count(), option === '2' ? 1 : 0);
         assert.equal(await page.locator('.summary-main').getAttribute('data-summary-filter'), option2Design ? 'all' : 'serviceability');
         assert.equal(await page.locator('.status-field').count(), option2Design ? 0 : 1);
-        if (option2Design) {
+        if (option === '2') {
           await assertRingCenters();
           const serviceabilityCenter = await page.locator('.summary-main').evaluate(card => {
             const cardBox = card.getBoundingClientRect();
@@ -194,7 +303,7 @@ const server = http.createServer((request, response) => {
             const percentageBox = card.querySelector('.service-ring-content strong').getBoundingClientRect();
             const cardCenter = (cardBox.top + cardBox.bottom) / 2;
             const ringCenter = (ringBox.top + ringBox.bottom) / 2;
-            return {ring: Math.abs(ringCenter - cardCenter), percentage: Math.abs((percentageBox.top + percentageBox.bottom) / 2 - ringCenter)};
+            return {ring: Math.abs(ringCenter - cardCenter), percentage: Math.abs((percentageBox.top + percentageBox.bottom) / 2 - ringCenter), card:{top:cardBox.top,bottom:cardBox.bottom,height:cardBox.height}, circle:{top:ringBox.top,bottom:ringBox.bottom,height:ringBox.height}};
           });
           assert.ok(serviceabilityCenter.ring < .5 && serviceabilityCenter.percentage < .5, `Serviceability ring and percentage must share the card midline: ${JSON.stringify(serviceabilityCenter)}`);
           const statusCenters = await page.locator('.summary-stat').evaluateAll(cards => cards.map(card => {
@@ -222,14 +331,15 @@ const server = http.createServer((request, response) => {
           const box = selector => {const b = document.querySelector(selector).getBoundingClientRect(); return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,x:(b.left+b.right)/2,y:(b.top+b.bottom)/2};};
           return {heading:box('h1'), options:box('.design-options'), date:box('.dashboard-header-date'), overview:box('.overview'), width:innerWidth, cards:[...document.querySelectorAll('.category-card')].map(card => {
             const c = card.getBoundingClientRect();
-            return {bottom:c.bottom,contained:getComputedStyle(card).overflow==='hidden' && [...card.querySelectorAll('.category-numbers, .category-label, .service-ring')].every(child => {const b=child.getBoundingClientRect(); return b.left>=c.left-1 && b.right<=c.right+1 && b.top>=c.top-1 && b.bottom<=c.bottom+1;})};
+            const children=[...card.querySelectorAll('.category-numbers, .category-label, .service-ring')].map(child=>{const b=child.getBoundingClientRect();return {className:child.className,left:b.left,right:b.right,top:b.top,bottom:b.bottom};});
+            return {bottom:c.bottom,box:{left:c.left,right:c.right,top:c.top,bottom:c.bottom},children,contained:getComputedStyle(card).overflow==='hidden' && children.every(child => child.left>=c.left-1 && child.right<=c.right+1 && child.top>=c.top-1 && child.bottom<=c.bottom+1)};
           })};
         });
         assert.ok(geometry.heading.right <= geometry.options.left + 1, `heading overlaps options at ${width}/${option}: ${JSON.stringify(geometry)}`);
         assert.ok(geometry.options.right <= geometry.date.left + 1, `options overlap date at ${width}/${option}: ${JSON.stringify(geometry)}`);
         assert.ok(Math.abs(geometry.options.x - geometry.width / 2) < 2, `options not centered at ${width}/${option}`);
         assert.ok(Math.abs(geometry.heading.y - geometry.options.y) < 2 && Math.abs(geometry.date.y - geometry.options.y) < 2, 'heading/options/date must share one row');
-        assert.ok(geometry.cards.every(card=>card.contained), `card content overflow at ${width}/${option}`);
+        assert.ok(geometry.cards.every(card=>card.contained), `card content overflow at ${width}/${option}: ${JSON.stringify(geometry.cards)}`);
         assert.ok(Math.max(...geometry.cards.map(card=>card.bottom)) < geometry.overview.top, `card artwork overlaps Fleet Overview at ${width}/${option}`);
         await page.screenshot({path:path.join(artifacts, `dashboard-${width}-option-${option}.png`)});
       }

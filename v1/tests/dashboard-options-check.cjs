@@ -1,6 +1,17 @@
 // Run: node tests/dashboard-options-check.cjs (no packages required).
 const assert = require('node:assert/strict');
-const {transition, renderScreen, trendData, recordsByDate, reloadSavedRecords, saveRecord} = require('../prototype/app.js');
+const {transition, renderScreen, trendData, recordsByDate, reloadSavedRecords, saveRecord, THEME_STORAGE_KEY, readStoredTheme, persistTheme} = require('../prototype/app.js');
+
+assert.equal(THEME_STORAGE_KEY, 'vms-serviceability-theme-v1');
+assert.equal(readStoredTheme({getItem: () => 'dark'}), 'dark');
+assert.equal(readStoredTheme({getItem: () => 'light'}), 'light');
+assert.equal(readStoredTheme({getItem: () => 'sepia'}), 'light');
+assert.equal(readStoredTheme({getItem: () => null}), 'light');
+assert.equal(readStoredTheme({getItem: () => {throw new Error('blocked');}}), 'light');
+let persistedTheme;
+persistTheme({setItem: (key, value) => {persistedTheme = [key, value];}}, 'dark');
+assert.deepEqual(persistedTheme, [THEME_STORAGE_KEY, 'dark']);
+assert.doesNotThrow(() => persistTheme({setItem: () => {throw new Error('blocked');}}, 'dark'));
 
 const base = {screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', selectedCategory: 'all', designOption: '1'};
 const selected = transition(base, {type: 'select-category', category: 'suv'});
@@ -29,7 +40,7 @@ assert.deepEqual(Object.keys(recordsByDate), ['2026-10-20', '2026-10-21', '2026-
 for (const theme of ['light', 'dark']) {
   for (const designOption of ['1', '2', '3']) {
     const option2Design = designOption !== '3';
-    const option1LightFill = designOption === '1' && theme === 'light';
+    const option1Fill = designOption === '1';
     const html = renderScreen({...selected, theme, designOption});
     assert.doesNotMatch(html, /Available\s*\/\s*Total/, 'remove labels, retain numeric ratios');
     if (!option2Design) {
@@ -52,11 +63,11 @@ for (const theme of ['light', 'dark']) {
     assert.match(overviewMarkup, /<h2 id="overview-title">Fleet Overview<\/h2>/);
     assert.doesNotMatch(overviewMarkup, /class="period"|icon-calendar/, 'Fleet Overview must not contain a date selector in either option');
     assert.equal((html.match(/class="count-ring"/g) || []).length, 0);
-    assert.equal((html.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? (option1LightFill ? 0 : 4) : 0);
+    assert.equal((html.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? (option1Fill ? 0 : 4) : 0);
     assert.equal((html.match(/class="option2-stat /g) || []).length, option2Design ? 8 : 0);
     for (const [category, percent] of Object.entries({all:70, sedan:75, suv:63, 'people-movers':75})) {
       const categoryCard = html.match(new RegExp(`<article class="category-card category-${category}[\\s\\S]*?<\\/article>`))[0];
-      if (option1LightFill) {
+      if (option1Fill) {
         assert.match(categoryCard, new RegExp(`category-${category} option1-fill`));
         assert.match(categoryCard, new RegExp(`class="service-percent">${percent}%<\\/strong>`));
         assert.doesNotMatch(categoryCard, /class="service-ring/);
@@ -69,7 +80,7 @@ for (const theme of ['light', 'dark']) {
       assert.match(html, /class="icon icon-overview-bars"[^>]*><svg[^>]*viewBox="0 0 32 28"/);
       assert.match(html, /<h3 id="trend-title"><span class="icon icon-trend"[^>]*><svg/);
       assert.match(html, /class="trend-delta is-positive"><span class="icon icon-trend-up trend-direction"[^>]*><svg[\s\S]*?<\/span>\+3%<\/b>/);
-      if (!option1LightFill) {
+      if (!option1Fill) {
         assert.match(html, /class="service-ring is-alert"[^>]*aria-label="63% serviceable"/);
         assert.match(html, /<span class="service-ring-content"><strong>63%<\/strong><\/span>/);
       }
@@ -81,10 +92,10 @@ for (const theme of ['light', 'dark']) {
       assert.doesNotMatch(detail, /Available\s*\/\s*Total/);
       assert.equal((detail.match(/data-summary-filter=/g) || []).length, option2Design ? 4 : 3);
       assert.equal((detail.match(/class="count-ring"/g) || []).length, 0);
-      assert.equal((detail.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? (option1LightFill ? 0 : 1) : 0);
+      assert.equal((detail.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? (option1Fill ? 0 : 1) : 0);
       assert.equal((detail.match(/class="option2-stat /g) || []).length, option2Design ? 1 : 0);
       if (option2Design) {
-        if (option1LightFill) {
+        if (option1Fill) {
           assert.match(detail, new RegExp(`class="summary-main percentage-card option1-fill[^"]*"[\\s\\S]*?class="service-percent">${{all:70, sedan:75, suv:63, 'people-movers':75}[screen]}%<\\/strong>`));
         } else {
           assert.match(detail, /class="summary-main percentage-card (?!option1-fill)/);
@@ -137,7 +148,9 @@ assert.match(allReferenceOverview, /class="status-share status-share-unavailable
 assert.match(allReferenceOverview, /SUV has the lowest serviceability/);
 assert.match(allReferenceOverview, /63%<\/em> \(30 of 48 vehicles available\)/);
 assert.equal((allReferenceOverview.match(/class="insight-arrow"/g) || []).length, 3);
-assert.match(allReferenceOverview, /stroke="#08a875"/);
+assert.match(allReferenceOverview, /class="trend-area"[^>]*fill="url\(#trend-fill\)"/);
+assert.match(allReferenceOverview, /class="trend-line"[^>]*stroke="var\(--trend-line\)"/);
+assert.match(allReferenceOverview, /class="trend-points" fill="var\(--trend-line\)"/);
 
 const allReferenceDetail = renderScreen({...base, screen: 'all', designOption: '2'});
 const option1ReferenceDetail = renderScreen({...base, screen: 'all', designOption: '1'});
