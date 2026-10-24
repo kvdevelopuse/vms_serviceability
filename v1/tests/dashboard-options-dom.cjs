@@ -36,6 +36,22 @@ option1Fixture.window.document.head.append(option1Style);
 assert.equal(option1Fixture.window.getComputedStyle(option1Fixture.window.document.querySelector('.category-card')).overflow, 'hidden', 'vehicle artwork must stay inside every card');
 assert.equal(option1Fixture.window.document.querySelectorAll('.card-select, .category-card.is-selected').length, 0, 'cards have no selection control or selection border state');
 option1Fixture.window.close();
+for (const theme of ['light', 'dark']) {
+  for (const screen of ['dashboard', 'suv']) {
+    const fixtures = ['1', '3'].map(designOption => {
+      const fixture = new JSDOM(`<html data-theme="${theme}" data-design="${designOption}"><body>${renderScreen({screen,theme,unit:'All',date:'2026-10-22',designOption})}</body></html>`, {virtualConsole:new VirtualConsole()});
+      const style = fixture.window.document.createElement('style');
+      style.textContent = stylesheet.textContent;
+      fixture.window.document.head.append(style);
+      return fixture;
+    });
+    const selector = screen === 'dashboard' ? '.category-suv' : '.summary-main';
+    const properties = ['background', 'border', 'display', 'gridTemplateColumns', 'minHeight'];
+    const computed = fixtures.map(fixture => fixture.window.getComputedStyle(fixture.window.document.querySelector(selector)));
+    for (const property of properties) assert.equal(computed[1][property], computed[0][property], `Option 3 ${theme}/${screen} ${property} matches Option 1`);
+    fixtures.forEach(fixture => fixture.window.close());
+  }
+}
 headerStyleFixture.window.document.body.insertAdjacentHTML('beforeend', renderScreen({screen:'suv',theme:'light',unit:'All',date:'2026-10-22',statusFilter:'mission'}));
 assert.equal(headerStyleFixture.window.getComputedStyle(headerStyleFixture.window.document.querySelector('.summary-filter.active')).outlineOffset, '-3px', 'selection outline must stay inside the detail overflow clip');
 for (const ring of headerStyleFixture.window.document.querySelectorAll('.service-ring')) {
@@ -141,7 +157,7 @@ for (const theme of ['light', 'dark']) {
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.mission-stat')).backgroundColor, 'rgb(255, 249, 238)');
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.unavailable-stat')).backgroundColor, 'rgb(254, 240, 241)');
       }
-      for (const designOption of ['1','2']) {
+      for (const designOption of ['1','2','3']) {
         fixture.window.document.documentElement.dataset.design=designOption;
         const statusFilters = designOption === '2' ? ['all','available','mission','unavailable'] : ['serviceability','mission','unavailable'];
         for (const statusFilter of statusFilters) {
@@ -188,7 +204,7 @@ const navigate = async selector => {
     const immutable = JSON.stringify(window.prototypeApi.recordsByDate);
     for (const theme of ['light', 'dark']) {
       if (doc.documentElement.dataset.theme !== theme) click('#theme-toggle');
-      for (const option of ['1', '2']) {
+      for (const option of ['1', '2', '3']) {
         change('[name="dashboard-design"][value="' + option + '"]', option);
         assert.equal(doc.documentElement.dataset.design, option);
         for (const category of ['all','sedan','suv','people-movers']) {
@@ -208,6 +224,12 @@ const navigate = async selector => {
         }
       }
     }
+    await navigate('.category-suv .round-arrow .icon');
+    assert.equal(doc.documentElement.dataset.design, '3');
+    assert.equal(doc.querySelectorAll('.summary-filter').length, 3);
+    assert.equal(doc.querySelectorAll('.service-ring, .option2-stat').length, 0);
+    await navigate('.back-button');
+    change('[name="dashboard-design"][value="2"]', '2');
     click('.category-sedan');
     change('#unit-filter', 'Unit C');
     change('#dashboard-date', '2026-10-21');
@@ -248,7 +270,7 @@ const navigate = async selector => {
     assert.doesNotMatch(query('.trend-chart').textContent, /21-Oct|22-Oct/);
     change('#unit-filter', 'All');
     change('#dashboard-date', '2026-10-22');
-    for (const option of ['1', '2']) {
+    for (const option of ['1', '2', '3']) {
       change(`[name="dashboard-design"][value="${option}"]`, option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await navigate(`.category-${category} .round-arrow`);

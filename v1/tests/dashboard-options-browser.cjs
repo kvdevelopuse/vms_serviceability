@@ -67,7 +67,7 @@ const server = http.createServer((request, response) => {
     };
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
-      for (const option of ['1', '2']) {
+      for (const option of ['1', '2', '3']) {
         await design(option);
         for (const category of ['all','sedan','suv','people-movers']) {
           await card(category).click();
@@ -93,6 +93,15 @@ const server = http.createServer((request, response) => {
         }
       }
     }
+
+    await arrow('suv').click();
+    await page.waitForSelector('.detail-suv');
+    assert.equal(await page.locator('html').getAttribute('data-design'), '3');
+    assert.equal(await page.locator('.summary-filter').count(), 3);
+    assert.equal(await page.locator('.service-ring, .option2-stat').count(), 0);
+    await page.locator('.back-button').click();
+    await page.waitForSelector('.dashboard');
+    await design('2');
 
     // Card bodies are static; only the separate arrows navigate.
     await card('suv').click();
@@ -132,7 +141,7 @@ const server = http.createServer((request, response) => {
 
     await page.locator('#unit-filter').selectOption('All');
     await page.locator('#dashboard-date').fill('2026-10-22');
-    for (const option of ['1', '2']) {
+    for (const option of ['1', '2', '3']) {
       await design(option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await arrow(category).click();
@@ -172,7 +181,7 @@ const server = http.createServer((request, response) => {
     if (await page.locator('html').getAttribute('data-theme') !== 'light') await page.locator('#theme-toggle').click();
     for (const [width, height] of [[1920,1080], [1366,768], [800,900], [390,844], [320,740]]) {
       await page.setViewportSize({width, height});
-      for (const option of ['1', '2']) {
+      for (const option of ['1', '2', '3']) {
         await design(option);
         const geometry = await page.evaluate(() => {
           const box = selector => {const b = document.querySelector(selector).getBoundingClientRect(); return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,x:(b.left+b.right)/2,y:(b.top+b.bottom)/2};};

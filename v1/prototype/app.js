@@ -367,7 +367,7 @@ function screenFromHash(hash) {
 }
 
 function transition(state, action) {
-  if (action.type === 'set-design' && ['1', '2'].includes(action.option)) {
+  if (action.type === 'set-design' && ['1', '2', '3'].includes(action.option)) {
     return {...state, designOption: action.option};
   }
   if (action.type === 'toggle-theme') {
@@ -404,7 +404,7 @@ function header(screen, state) {
       <div class="heading-stack"><h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
       ${dashboard ? '' : unitControl('detail-unit', state.unit, true)}</div>
     </div>
-    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2'].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
+    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', '3'].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
       <label class="date date-picker dashboard-header-date" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>
       <div class="dashboard-unit">${unitControl('unit-filter', state.unit)}</div>` : ''}
     <div class="header-tools">

@@ -864,3 +864,8 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
   :root[data-theme] .option2-stat strong { font-size: 15px; }
   :root[data-theme] .option2-stat small { margin-top: 2px; font-size: 8px; }
 }
+@media (max-width: 340px) {
+  .design-options { gap: 2px; }
+  .design-options label { gap: 1px; font-size: 10px; }
+  .dashboard-header-date { font-size: 10px; }
+}

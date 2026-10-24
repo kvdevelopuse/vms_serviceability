@@ -16,7 +16,7 @@ const moduleObject = {exports: {}};
 vm.runInNewContext(code, {module: moduleObject, exports: moduleObject.exports, require: name => name.endsWith('.css') ? {} : qaRequire(name)});
 const {FleetCard, DetailSummaryCards} = moduleObject.exports;
 
-for (const designOption of ['1', '2']) {
+for (const designOption of ['1', '2', '3']) {
   const fleet = renderToStaticMarkup(React.createElement(FleetCard, {title: 'SUV', serviceability: 62, available: 30, total: 48, designOption, selected: true, onSelect() {}}));
   const detail = renderToStaticMarkup(React.createElement(DetailSummaryCards, {title: 'SUV', serviceability: 62, available: 30, total: 48, onMission: 11, notAvailable: 7, onMissionPercentage: 90, notAvailablePercentage: 90, designOption}));
   assert.doesNotMatch(fleet + detail, /Available\s*\/\s*Total/);

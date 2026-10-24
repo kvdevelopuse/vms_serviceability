@@ -8,11 +8,15 @@ assert.deepEqual(selected, base, 'card bodies do not select or change Fleet Over
 assert.deepEqual(transition(base, {type: 'select-category', category: 'invalid'}), base);
 const circular = transition(selected, {type: 'set-design', option: '2'});
 assert.equal(circular.designOption, '2');
-assert.deepEqual(transition(base, {type: 'set-design', option: '3'}), base);
-for (const action of [{type: 'navigate', screen: 'sedan'}, {type: 'set-unit', unit: 'Unit C'}, {type: 'set-date', date: '2026-10-20'}, {type: 'toggle-theme'}]) {
-  const result = transition(circular, action);
-  assert.equal(result.selectedCategory, 'all');
-  assert.equal(result.designOption, '2');
+const option3 = transition(selected, {type: 'set-design', option: '3'});
+assert.equal(option3.designOption, '3');
+assert.deepEqual(transition(base, {type: 'set-design', option: '4'}), base);
+for (const designState of [circular, option3]) {
+  for (const action of [{type: 'navigate', screen: 'sedan'}, {type: 'set-unit', unit: 'Unit C'}, {type: 'set-date', date: '2026-10-20'}, {type: 'set-filter', filter: 'mission'}, {type: 'toggle-theme'}]) {
+    const result = transition(designState, action);
+    assert.equal(result.selectedCategory, 'all');
+    assert.equal(result.designOption, designState.designOption);
+  }
 }
 
 assert.deepEqual(trendData('All', 'suv', '2026-10-22'), [
@@ -23,7 +27,7 @@ assert.deepEqual(trendData('All', 'all', '2026-10-20'), [{date: '2026-10-20', pe
 assert.deepEqual(Object.keys(recordsByDate), ['2026-10-20', '2026-10-21', '2026-10-22']);
 
 for (const theme of ['light', 'dark']) {
-  for (const designOption of ['1', '2']) {
+  for (const designOption of ['1', '2', '3']) {
     const html = renderScreen({...selected, theme, designOption});
     assert.doesNotMatch(html, /Available\s*\/\s*Total/, 'remove labels, retain numeric ratios');
     if (designOption === '1') {
@@ -32,6 +36,7 @@ for (const theme of ['light', 'dark']) {
     }
     assert.match(html, /name="dashboard-design" value="1"/);
     assert.match(html, /name="dashboard-design" value="2"/);
+    assert.match(html, /name="dashboard-design" value="3"/);
     assert.doesNotMatch(html, /card-select|data-select-category|is-selected/);
     assert.match(html, /120 total vehicles: 84 available, 24 on mission, 12 not available/);
     assert.match(html, /30 of 48 vehicles available/);
