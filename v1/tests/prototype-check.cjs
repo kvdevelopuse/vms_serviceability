@@ -73,7 +73,8 @@ assert.match(dashboard, /class="date-display">22-Oct-2026/);
 assert.match(dashboard, /id="dashboard-date" type="date" min="2026-10-20" max="2026-10-22" value="2026-10-22"/);
 assert.match(dashboard, /class="category-card category-all" data-category="all" style="--serviceability:70%"/);
 assert.doesNotMatch(dashboard, /card-select|is-selected|data-select-category/);
-assert.ok(dashboard.includes('84 / 120'));
+assert.equal((dashboard.match(/class="service-ring(?: is-alert)?"/g) || []).length, 4);
+assert.equal((dashboard.match(/class="option2-stat /g) || []).length, 8);
 for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.ok(dashboard.includes(`<a class="round-arrow" href="#${screen}"`));
   assert.ok(!dashboard.includes(`<a href="#${screen}" class="category-card`));
@@ -85,14 +86,15 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.match(html, /data-date="2026-10-21"/);
   assert.match(html, /21-Oct-2026/);
   assert.equal((html.match(/class="[^"]*percentage-card[^"]*"/g) || []).length, 1);
-  assert.equal((html.match(/data-summary-filter=/g) || []).length, 3);
+  assert.equal((html.match(/data-summary-filter=/g) || []).length, 4);
   assert.doesNotMatch(html, />Actions</);
   assert.equal((html.match(/<tr data-record-id=/g) || []).length, Math.min(10, recordsFor('Unit C', screen, '2026-10-21').length));
-  assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 7);
+  assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 6);
   if (screen === 'suv') {
     const reference = renderScreen({screen, theme: 'light', unit: 'All', date: '2026-10-22'});
-    assert.match(reference, /class="service-percent">63%/);
-    assert.doesNotMatch(reference, /\bavailable-stat\b|data-summary-filter="available"|62%/);
+    assert.match(reference, /class="service-ring is-alert"[^>]*aria-label="63% serviceable"/);
+    assert.match(reference, /\bavailable-stat\b|data-summary-filter="available"/);
+    assert.doesNotMatch(reference, /62%/);
   }
 }
 
@@ -100,7 +102,8 @@ const paged = renderScreen({screen: 'suv', theme: 'light', unit: 'Unit C', date:
 assert.match(paged, /Page 2 of 2/);
 assert.equal((paged.match(/<tr data-record-id=/g) || []).length, 1);
 const filtered = renderScreen({screen: 'suv', theme: 'light', unit: 'Unit C', date: '2026-10-21', statusFilter: 'mission', page: 1});
-assert.equal((filtered.match(/status-badge mission/g) || []).length, 4);
+assert.equal((filtered.match(/<tr data-record-id=/g) || []).length, 4);
+assert.equal((filtered.match(/status-badge mission/g) || []).length, 0);
 assert.match(filtered, /summary-filter active" data-summary-filter="mission"/);
 
 const firstRecord = recordsFor('Unit A', 'sedan', '2026-10-21')[0];

@@ -218,27 +218,27 @@
 .vms-summary-card--mission > b::before { background: var(--vms-indicator-mission-soft); }
 .vms-summary-card--unavailable > b { color: var(--vms-indicator-unserviceable); }
 .vms-summary-card--unavailable > b::before { background: var(--vms-indicator-unserviceable-soft); }
-.vms-detail-summary[data-design="2"] .vms-serviceability-card__percentage,
-.vms-detail-summary[data-design="2"] .vms-serviceability-card__total { align-self: center; justify-self: center; }
-.vms-detail-summary[data-design="2"] .vms-summary-card strong,
-.vms-detail-summary[data-design="2"] .vms-summary-card > b { font-size: 1.75rem; line-height: 1; }
-.vms-detail-summary[data-design="2"] .vms-summary-card small { display: inline-block; transform: translateY(-4px); }
-.vms-detail-summary[data-design="2"] .vms-summary-card > b { margin-left: 16px; padding-left: 16px; border: 0; background-image: linear-gradient(var(--vms-border), var(--vms-border)); background-position: left center; background-size: 1px 70%; background-repeat: no-repeat; font-weight: 400; transform: none; }
-.vms-detail-summary[data-design="2"] .vms-summary-card > b::before { content: none; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-serviceability-card__percentage,
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-serviceability-card__total { align-self: center; justify-self: center; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-summary-card strong,
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-summary-card > b { font-size: 1.75rem; line-height: 1; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-summary-card small { display: inline-block; transform: translateY(-4px); }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-summary-card > b { margin-left: 16px; padding-left: 16px; border: 0; background-image: linear-gradient(var(--vms-border), var(--vms-border)); background-position: left center; background-size: 1px 70%; background-repeat: no-repeat; font-weight: 400; transform: none; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-summary-card > b::before { content: none; }
 .vms-serviceability-card.is-active, .vms-summary-card.is-active { outline: 3px solid var(--vms-focus); outline-offset: -3px; }
 .vms-detail-summary button:focus-visible { outline-offset: -3px; }
 
 .vms-fleet-card__select { position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
 .vms-fleet-card:has(.vms-fleet-card__select) > :not(.vms-fleet-card__select) { position: relative; pointer-events: none; }
 .vms-fleet-card .vms-fleet-card__footer button { position: relative; z-index: 2; pointer-events: auto; }
-.vms-serviceability[data-theme="light"] [data-design="2"][data-category="sedan"] { --vms-option2-surface: #fff8eb; --vms-option2-selected: #ffefd0; --vms-option2-accent: #ff9600; --vms-option2-border: #f6ddb1; --vms-option2-icon-surface: #ffebc7; }
-.vms-serviceability[data-theme="light"] [data-design="2"][data-category="suv"] { --vms-option2-surface: #f6f2ff; --vms-option2-selected: #ece3ff; --vms-option2-accent: #7b45f5; --vms-option2-border: #dbceff; --vms-option2-icon-surface: #e7ddff; }
-.vms-serviceability[data-theme="light"] [data-design="2"][data-category="people-movers"] { --vms-option2-surface: #eefcf7; --vms-option2-selected: #dcf8ed; --vms-option2-accent: #08a673; --vms-option2-border: #c3eddd; --vms-option2-icon-surface: #d2f4e7; }
-.vms-serviceability[data-theme="dark"] [data-design="2"][data-category="sedan"] { --vms-option2-surface: #382918; --vms-option2-selected: #553917; --vms-option2-accent: #ffbd63; --vms-option2-border: #735125; --vms-option2-icon-surface: #59401f; }
-.vms-serviceability[data-theme="dark"] [data-design="2"][data-category="suv"] { --vms-option2-surface: #2b2344; --vms-option2-selected: #443467; --vms-option2-accent: #ba9bff; --vms-option2-border: #624c91; --vms-option2-icon-surface: #45376b; }
-.vms-serviceability[data-theme="dark"] [data-design="2"][data-category="people-movers"] { --vms-option2-surface: #15362e; --vms-option2-selected: #1e5142; --vms-option2-accent: #62d7ae; --vms-option2-border: #2d735f; --vms-option2-icon-surface: #235648; }
-.vms-fleet-card[data-design="2"],
-.vms-detail-summary[data-design="2"] .vms-serviceability-card {
+.vms-serviceability[data-theme="light"] :is([data-design="1"], [data-design="2"])[data-category="sedan"] { --vms-option2-surface: #fff8eb; --vms-option2-selected: #ffefd0; --vms-option2-accent: #ff9600; --vms-option2-border: #f6ddb1; --vms-option2-icon-surface: #ffebc7; }
+.vms-serviceability[data-theme="light"] :is([data-design="1"], [data-design="2"])[data-category="suv"] { --vms-option2-surface: #f6f2ff; --vms-option2-selected: #ece3ff; --vms-option2-accent: #7b45f5; --vms-option2-border: #dbceff; --vms-option2-icon-surface: #e7ddff; }
+.vms-serviceability[data-theme="light"] :is([data-design="1"], [data-design="2"])[data-category="people-movers"] { --vms-option2-surface: #eefcf7; --vms-option2-selected: #dcf8ed; --vms-option2-accent: #08a673; --vms-option2-border: #c3eddd; --vms-option2-icon-surface: #d2f4e7; }
+.vms-serviceability[data-theme="dark"] :is([data-design="1"], [data-design="2"])[data-category="sedan"] { --vms-option2-surface: #382918; --vms-option2-selected: #553917; --vms-option2-accent: #ffbd63; --vms-option2-border: #735125; --vms-option2-icon-surface: #59401f; }
+.vms-serviceability[data-theme="dark"] :is([data-design="1"], [data-design="2"])[data-category="suv"] { --vms-option2-surface: #2b2344; --vms-option2-selected: #443467; --vms-option2-accent: #ba9bff; --vms-option2-border: #624c91; --vms-option2-icon-surface: #45376b; }
+.vms-serviceability[data-theme="dark"] :is([data-design="1"], [data-design="2"])[data-category="people-movers"] { --vms-option2-surface: #15362e; --vms-option2-selected: #1e5142; --vms-option2-accent: #62d7ae; --vms-option2-border: #2d735f; --vms-option2-icon-surface: #235648; }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]),
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-serviceability-card {
   --vms-text: var(--vms-option2-text);
   --vms-secondary: var(--vms-option2-secondary);
   --vms-focus: var(--vms-option2-accent);
@@ -248,14 +248,14 @@
   border-color: var(--vms-option2-border);
   box-shadow: 0 10px 24px rgb(35 70 96 / .12);
 }
-.vms-detail-summary[data-design="2"] .vms-serviceability-card.is-active { background: var(--vms-option2-selected); border-color: var(--vms-option2-accent); box-shadow: 0 14px 32px rgb(30 65 95 / .16); }
-.vms-fleet-card[data-design="2"] { display: grid; grid-template-rows: auto minmax(128px, 1fr) 112px; min-height: 320px; padding: 14px 16px 12px; overflow: hidden; }
-.vms-fleet-card[data-design="2"] .vms-fleet-card__footer { position: static; grid-row: 1; min-height: 48px; padding-right: 44px; }
-.vms-fleet-card[data-design="2"] .vms-fleet-card__footer > span { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 11px; background: var(--vms-option2-accent); color: #fff; }
-.vms-fleet-card[data-design="2"] .vms-fleet-card__footer button { position: absolute; right: 12px; bottom: 12px; color: var(--vms-option2-text); border-color: var(--vms-option2-accent); }
-.vms-fleet-card[data-design="2"] .vms-fleet-card__numbers { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(90px, .85fr); align-items: center; gap: 10px; }
-.vms-fleet-card[data-design="2"] .vms-fleet-card__numbers > span { display: grid; gap: 9px; text-align: left; }
-.vms-fleet-card[data-design="2"] .vms-fleet-card__image { grid-row: 3; height: 112px; margin: 0; padding-right: 20px; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-serviceability-card.is-active { background: var(--vms-option2-selected); border-color: var(--vms-option2-accent); box-shadow: 0 14px 32px rgb(30 65 95 / .16); }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) { display: grid; grid-template-rows: auto minmax(128px, 1fr) 112px; min-height: 320px; padding: 14px 16px 12px; overflow: hidden; }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__footer { position: static; grid-row: 1; min-height: 48px; padding-right: 44px; }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__footer > span { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 11px; background: var(--vms-option2-accent); color: #fff; }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__footer button { position: absolute; right: 12px; bottom: 12px; color: var(--vms-option2-text); border-color: var(--vms-option2-accent); }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__numbers { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(90px, .85fr); align-items: center; gap: 10px; }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__numbers > span { display: grid; gap: 9px; text-align: left; }
+.vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__image { grid-row: 3; height: 112px; margin: 0; padding-right: 20px; }
 .vms-service-ring { position: relative; display: grid; place-items: center; width: 132px; height: 132px; flex: 0 0 auto; border-radius: 50%; background: conic-gradient(from -90deg, var(--vms-option2-ring) var(--vms-ring-value), var(--vms-option2-track) 0); box-shadow: 0 9px 20px rgb(28 55 82 / .08); }
 .vms-service-ring::before { position: absolute; inset: 11px; border-radius: 50%; background: var(--vms-option2-surface); content: ""; }
 .vms-serviceability-card.is-active .vms-service-ring::before { background: var(--vms-option2-selected); }
@@ -269,14 +269,14 @@
 .vms-option2-stat__icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 9px; background: var(--vms-option2-icon-surface); color: var(--vms-option2-text); }
 .vms-option2-stat strong { color: var(--vms-option2-text); font-size: 23px; line-height: 1; letter-spacing: -.02em; }
 .vms-option2-stat small { margin-top: 4px; color: var(--vms-option2-secondary); font-size: 12px; line-height: 1; white-space: nowrap; }
-.vms-detail-summary[data-design="2"] .vms-serviceability-card__percentage { display: grid; place-items: center; }
-.vms-detail-summary[data-design="2"] .vms-serviceability-card__total { gap: 9px; text-align: left; }
-.vms-detail-summary[data-design="2"] .vms-service-ring { width: 112px; height: 112px; }
-.vms-detail-summary[data-design="2"] .vms-service-ring__content strong { font-size: 29px; }
-.vms-detail-summary[data-design="2"] .vms-service-ring__content small { font-size: 11px; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-serviceability-card__percentage { display: grid; place-items: center; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-serviceability-card__total { gap: 9px; text-align: left; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-service-ring { width: 112px; height: 112px; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-service-ring__content strong { font-size: 29px; }
+.vms-detail-summary:is([data-design="1"], [data-design="2"]) .vms-service-ring__content small { font-size: 11px; }
 @container (max-width: 520px) {
-  .vms-fleet-card[data-design="2"] { grid-template-rows: auto minmax(90px, 1fr) 78px; padding: 10px 8px 8px; }
-  .vms-fleet-card[data-design="2"] .vms-fleet-card__image { height: 78px; }
+  .vms-fleet-card:is([data-design="1"], [data-design="2"]) { grid-template-rows: auto minmax(90px, 1fr) 78px; padding: 10px 8px 8px; }
+  .vms-fleet-card:is([data-design="1"], [data-design="2"]) .vms-fleet-card__image { height: 78px; }
   .vms-service-ring { width: 86px; height: 86px; }
   .vms-service-ring::before { inset: 7px; }
   .vms-service-ring__content strong { font-size: 22px; }

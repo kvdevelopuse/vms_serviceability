@@ -68,6 +68,7 @@ const server = http.createServer((request, response) => {
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
       for (const option of ['1', '2', '3']) {
+        const option2Design = option !== '3';
         await design(option);
         for (const category of ['all','sedan','suv','people-movers']) {
           await card(category).click();
@@ -75,9 +76,9 @@ const server = http.createServer((request, response) => {
           await assertOverview();
         }
         assert.equal(await page.locator('.count-ring').count(), 0);
-        assert.equal(await page.locator('.service-ring').count(), option === '2' ? 4 : 0);
-        assert.equal(await page.locator('.option2-stat').count(), option === '2' ? 8 : 0);
-        if (option === '2') {
+        assert.equal(await page.locator('.service-ring').count(), option2Design ? 4 : 0);
+        assert.equal(await page.locator('.option2-stat').count(), option2Design ? 8 : 0);
+        if (option2Design) {
           await assertRingCenters();
           const backgrounds = await page.locator('.category-card').evaluateAll(cards => cards.map(card => getComputedStyle(card).backgroundColor));
           assert.equal(new Set(backgrounds).size, 4, 'reference design uses a distinct tint for every category');
@@ -142,16 +143,17 @@ const server = http.createServer((request, response) => {
     await page.locator('#unit-filter').selectOption('All');
     await page.locator('#dashboard-date').fill('2026-10-22');
     for (const option of ['1', '2', '3']) {
+      const option2Design = option !== '3';
       await design(option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await arrow(category).click();
         await page.waitForSelector(`.detail-${category}`);
-        assert.equal(await page.locator('.summary-filter').count(), option === '2' ? 4 : 3);
-        assert.equal(await page.locator('.available-stat').count(), option === '2' ? 1 : 0);
-        assert.equal(await page.locator('.service-ring').count(), option === '2' ? 1 : 0);
-        assert.equal(await page.locator('.summary-main').getAttribute('data-summary-filter'), option === '2' ? 'all' : 'serviceability');
-        assert.equal(await page.locator('.status-field').count(), option === '2' ? 0 : 1);
-        if (option === '2') {
+        assert.equal(await page.locator('.summary-filter').count(), option2Design ? 4 : 3);
+        assert.equal(await page.locator('.available-stat').count(), option2Design ? 1 : 0);
+        assert.equal(await page.locator('.service-ring').count(), option2Design ? 1 : 0);
+        assert.equal(await page.locator('.summary-main').getAttribute('data-summary-filter'), option2Design ? 'all' : 'serviceability');
+        assert.equal(await page.locator('.status-field').count(), option2Design ? 0 : 1);
+        if (option2Design) {
           await assertRingCenters();
           const serviceabilityCenter = await page.locator('.summary-main').evaluate(card => {
             const cardBox = card.getBoundingClientRect();

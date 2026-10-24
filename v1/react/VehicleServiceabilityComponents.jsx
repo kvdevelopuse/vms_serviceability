@@ -2,16 +2,17 @@ import React from 'react';
 import './vehicle-serviceability.css';
 
 const percentage = (value, total) => total ? Math.round(value / total * 100) : 0;
+const usesOption2Design = designOption => designOption === '1' || designOption === '2';
 
 function ServiceabilityValue({value, designOption}) {
-  return designOption === '2'
+  return usesOption2Design(designOption)
     ? <span className={`vms-service-ring${value < 70 ? ' is-alert' : ''}`} style={{'--vms-ring-value': `${value}%`}} role="img" aria-label={`${value}% serviceable`}><span className="vms-service-ring__content"><strong>{value}%</strong></span></span>
     : <strong>{value}%</strong>;
 }
 
 function CountValue({available, total, designOption, showTotalLabel = true}) {
   const label = `${available} / ${total}`;
-  return designOption === '2'
+  return usesOption2Design(designOption)
     ? <><span className="vms-option2-stat vms-option2-stat--available"><span className="vms-option2-stat__icon" aria-hidden="true">▣</span><span><strong>{available}</strong><small>Available</small></span></span><span className="vms-option2-stat vms-option2-stat--total"><span className="vms-option2-stat__icon" aria-hidden="true">▦</span><span><strong>{total}</strong>{showTotalLabel && <small>Total</small>}</span></span></>
     : <strong>{label}</strong>;
 }
@@ -117,10 +118,10 @@ export function DetailSummaryCards({
       >
         <span className="vms-serviceability-card__percentage"><ServiceabilityValue value={serviceabilityValue} designOption={designOption} /></span>
         {imageSrc && <img src={imageSrc} alt={imageAlt} />}
-        <span className="vms-serviceability-card__total"><CountValue available={available} total={total} designOption={designOption} showTotalLabel={designOption !== '2'} /></span>
+        <span className="vms-serviceability-card__total"><CountValue available={available} total={total} designOption={designOption} showTotalLabel={!usesOption2Design(designOption)} /></span>
       </button>
       <SummaryActionCard filter="mission" activeFilter={activeFilter} label="On Mission" value={onMission} valuePercent={missionPercentageValue} tone="mission" icon={icons.mission} onFilter={onFilter} />
-      <SummaryActionCard filter="unavailable" activeFilter={activeFilter} label={designOption === '2' ? 'Unavailable' : 'Not Available'} value={notAvailable} valuePercent={unavailablePercentageValue} tone="unavailable" icon={icons.unavailable} onFilter={onFilter} />
+      <SummaryActionCard filter="unavailable" activeFilter={activeFilter} label={usesOption2Design(designOption) ? 'Unavailable' : 'Not Available'} value={notAvailable} valuePercent={unavailablePercentageValue} tone="unavailable" icon={icons.unavailable} onFilter={onFilter} />
     </section>
   );
 }

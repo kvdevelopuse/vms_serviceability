@@ -366,6 +366,10 @@ function screenFromHash(hash) {
   return Object.hasOwn(fleet, screen) ? screen : 'dashboard';
 }
 
+function usesOption2Design(designOption) {
+  return designOption === '1' || designOption === '2';
+}
+
 function transition(state, action) {
   if (action.type === 'set-design' && ['1', '2', '3'].includes(action.option)) {
     return {...state, designOption: action.option};
@@ -441,10 +445,10 @@ function dashboard(state) {
   const missionEnd = overall.total ? (overall.available + overall.mission) / overall.total * 100 : 0;
   return `<section class="category-grid" aria-label="Vehicle categories">${cards}</section>
     <section class="overview" aria-labelledby="overview-title">
-      <div class="overview-heading">${icon(state.designOption === '2' ? 'overview-bars' : 'bars')}<div><h2 id="overview-title">Fleet Overview</h2><p role="status">${overall.title} (${overall.total} Total)</p></div></div>
+      <div class="overview-heading">${icon(usesOption2Design(state.designOption) ? 'overview-bars' : 'bars')}<div><h2 id="overview-title">Fleet Overview</h2><p role="status">${overall.title} (${overall.total} Total)</p></div></div>
       <div class="overview-grid" id="fleet-overview-panels">
-        <section class="overview-panel trend-panel" aria-labelledby="trend-title"><div class="panel-heading"><h3 id="trend-title">${state.designOption === '2' ? icon('trend') : ''}Serviceability Trend</h3></div>
-          <div class="trend-summary"><strong class="trend-current">${overall.percent}%</strong><div><b class="trend-delta ${changeClass}">${state.designOption === '2' ? icon(change > 0 ? 'trend-up' : change < 0 ? 'trend-down' : 'trend-flat') : ''}${change > 0 ? '+' : ''}${change}%</b><span>${history.length > 1 ? `vs previous day (${previous}%)` : 'First recorded day'}</span></div></div>
+        <section class="overview-panel trend-panel" aria-labelledby="trend-title"><div class="panel-heading"><h3 id="trend-title">${usesOption2Design(state.designOption) ? icon('trend') : ''}Serviceability Trend</h3></div>
+          <div class="trend-summary"><strong class="trend-current">${overall.percent}%</strong><div><b class="trend-delta ${changeClass}">${usesOption2Design(state.designOption) ? icon(change > 0 ? 'trend-up' : change < 0 ? 'trend-down' : 'trend-flat') : ''}${change > 0 ? '+' : ''}${change}%</b><span>${history.length > 1 ? `vs previous day (${previous}%)` : 'First recorded day'}</span></div></div>
           ${trendChart(overviewState)}
         </section>
         <section class="overview-panel status-panel" aria-labelledby="status-title"><h3 id="status-title">Fleet Status</h3><div class="status-breakdown"><div class="donut-wrap"><span class="status-share status-share-available">${overall.percent}%</span><span class="status-share status-share-mission">${overall.missionPercent}%</span><span class="status-share status-share-unavailable">${overall.unavailablePercent}%</span><div class="donut" style="--available:${availableShare}%;--mission-end:${missionEnd}%" role="img" aria-label="${overall.total} total vehicles: ${overall.available} available, ${overall.mission} on mission, ${overall.unavailable} not available"><div><strong>${overall.total}</strong><span>Total Vehicles</span></div></div></div><dl class="status-legend">
@@ -461,7 +465,7 @@ function dashboard(state) {
 
 function serviceabilityValue(value, designOption = '1') {
   const percent = Math.max(0, Math.min(100, Number(value) || 0));
-  if (designOption === '2') {
+  if (usesOption2Design(designOption)) {
     return `<span class="service-ring${percent < 70 ? ' is-alert' : ''}" style="--ring-value:${percent}%" role="img" aria-label="${percent}% serviceable"><span class="service-ring-content"><strong>${percent}%</strong></span></span>`;
   }
   return `<strong class="service-percent">${percent}%</strong>`;
@@ -469,7 +473,7 @@ function serviceabilityValue(value, designOption = '1') {
 
 function countValue(available, total, designOption) {
   const label = `${available} / ${total}`;
-  return designOption === '2'
+  return usesOption2Design(designOption)
     ? `<span class="option2-stat option2-stat-available"><span class="option2-stat-icon">${icon('car')}</span><span><strong>${available}</strong><small>Available</small></span></span><span class="option2-stat option2-stat-total"><span class="option2-stat-icon">${icon('grid')}</span><span><strong>${total}</strong><small>Total</small></span></span>`
     : `<strong>${label}</strong>`;
 }
@@ -496,7 +500,7 @@ function trendChart(state) {
 
 function summary(screen, state) {
   const data = displayData(state.unit, screen, state.date);
-  const option2 = state.designOption === '2';
+  const option2 = usesOption2Design(state.designOption);
   const primaryFilter = option2 ? 'all' : 'serviceability';
   const filterClass = filter => `summary-filter${state.statusFilter === filter ? ' active' : ''}`;
   const filterAttributes = filter => `data-summary-filter="${filter}" role="button" tabindex="0" aria-pressed="${state.statusFilter === filter}"`;
@@ -515,7 +519,7 @@ function summary(screen, state) {
 }
 
 function toolbar(state) {
-  const option2 = state.designOption === '2';
+  const option2 = usesOption2Design(state.designOption);
   return `<div class="table-toolbar" aria-label="Filter controls shown in reference; presentation only">
     <div class="static-field search-field">${option2 ? icon('detail-search') : ''}<span>Search by plate number, model or VIN...</span>${option2 ? '' : icon('search')}</div>
     ${option2 ? '' : `<div class="static-field status-field"><span>All Status</span>${icon('down')}</div>`}
@@ -526,19 +530,20 @@ function toolbar(state) {
 function vehicleTable(screen, state) {
   const filterStatus = {serviceability: 'Available', available: 'Available', mission: 'On Mission', unavailable: 'Not Available'}[state.statusFilter];
   const records = recordsFor(state.unit, screen, state.date);
-  if (state.designOption === '2' && screen === 'all') records.sort((left, right) => statusNames.indexOf(left.status) - statusNames.indexOf(right.status));
+  const option2 = usesOption2Design(state.designOption);
+  if (option2 && screen === 'all') records.sort((left, right) => statusNames.indexOf(left.status) - statusNames.indexOf(right.status));
   const matchingRecords = records.filter(record => !filterStatus || record.status === filterStatus);
-  const showStatus = state.designOption !== '2' || screen === 'all';
-  const showAssignment = state.designOption !== '2' || state.statusFilter === 'all' || state.statusFilter === 'mission';
+  const showStatus = !option2 || screen === 'all';
+  const showAssignment = !option2 || state.statusFilter === 'all' || state.statusFilter === 'mission';
   const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
   const page = Math.min(state.page, pages);
   const offset = (page - 1) * 10;
   const pageRecords = matchingRecords.slice(offset, offset + 10);
   const rows = pageRecords.map((record, index) => {
     const statusClass = record.status === 'Available' ? 'available' : record.status === 'On Mission' ? 'mission' : 'unavailable';
-    const statusLabel = state.designOption === '2' && record.status === 'Not Available' ? 'Unavailable' : record.status;
-    const typeCell = state.designOption === '2' ? `<span class="vehicle-type-cell">${icon(`table-${record.category}`)}<span>${record.type}</span></span>` : record.type;
-    const statusMark = state.designOption === '2' ? '<i aria-hidden="true">✓</i>' : '<i></i>';
+    const statusLabel = option2 && record.status === 'Not Available' ? 'Unavailable' : record.status;
+    const typeCell = option2 ? `<span class="vehicle-type-cell">${icon(`table-${record.category}`)}<span>${record.type}</span></span>` : record.type;
+    const statusMark = option2 ? '<i aria-hidden="true">✓</i>' : '<i></i>';
     return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${offset + index + 1}</td>${screen === 'all' ? '<td>' + typeCell + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td>${showStatus ? `<td><span class="status-badge ${statusClass}">${statusMark}${statusLabel}</span></td>` : ''}<td>${formatDate(state.date)} ${record.time}</td>${showAssignment ? `<td>${escapeHtml(record.assignment)}</td>` : ''}</tr>`;
   }).join('');
   const title = fleet[screen].title;
@@ -546,7 +551,7 @@ function vehicleTable(screen, state) {
   const start = matchingRecords.length ? offset + 1 : 0;
   const end = Math.min(offset + pageRecords.length, matchingRecords.length);
   return `<div class="table-scroll" tabindex="0" role="region" aria-label="${title} vehicle grid"><table><caption class="visually-hidden">${title}: page ${page} of ${pages}</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th>${showStatus ? '<th scope="col">Status</th>' : ''}<th scope="col">Last Updated</th>${showAssignment ? '<th scope="col">Current Assignment</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="table-footer"><p>Showing ${start}${state.designOption === '2' ? ' – ' : '-'}${end} of ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" aria-label="Table pagination"><button type="button" class="page-arrow previous-page" data-page-action="previous"${page === 1 ? ' disabled' : ''}>${icon('back')}<span>Previous</span></button><span class="page-status" aria-live="polite">Page ${page} of ${pages}</span><button type="button" class="page-arrow next-page" data-page-action="next"${page === pages ? ' disabled' : ''}><span>Next</span>${icon('back')}</button><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
+    <div class="table-footer"><p>Showing ${start}${option2 ? ' – ' : '-'}${end} of ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" aria-label="Table pagination"><button type="button" class="page-arrow previous-page" data-page-action="previous"${page === 1 ? ' disabled' : ''}>${icon('back')}<span>Previous</span></button><span class="page-status" aria-live="polite">Page ${page} of ${pages}</span><button type="button" class="page-arrow next-page" data-page-action="next"${page === pages ? ' disabled' : ''}><span>Next</span>${icon('back')}</button><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
 }
 
 function recordDialog(state) {

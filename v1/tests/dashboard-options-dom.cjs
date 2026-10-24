@@ -38,7 +38,7 @@ assert.equal(option1Fixture.window.document.querySelectorAll('.card-select, .cat
 option1Fixture.window.close();
 for (const theme of ['light', 'dark']) {
   for (const screen of ['dashboard', 'suv']) {
-    const fixtures = ['1', '3'].map(designOption => {
+    const fixtures = ['1', '2'].map(designOption => {
       const fixture = new JSDOM(`<html data-theme="${theme}" data-design="${designOption}"><body>${renderScreen({screen,theme,unit:'All',date:'2026-10-22',designOption})}</body></html>`, {virtualConsole:new VirtualConsole()});
       const style = fixture.window.document.createElement('style');
       style.textContent = stylesheet.textContent;
@@ -48,7 +48,7 @@ for (const theme of ['light', 'dark']) {
     const selector = screen === 'dashboard' ? '.category-suv' : '.summary-main';
     const properties = ['background', 'border', 'display', 'gridTemplateColumns', 'minHeight'];
     const computed = fixtures.map(fixture => fixture.window.getComputedStyle(fixture.window.document.querySelector(selector)));
-    for (const property of properties) assert.equal(computed[1][property], computed[0][property], `Option 3 ${theme}/${screen} ${property} matches Option 1`);
+    for (const property of properties) assert.equal(computed[1][property], computed[0][property], `Option 1 ${theme}/${screen} ${property} matches Option 2`);
     fixtures.forEach(fixture => fixture.window.close());
   }
 }
@@ -158,13 +158,14 @@ for (const theme of ['light', 'dark']) {
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.unavailable-stat')).backgroundColor, 'rgb(254, 240, 241)');
       }
       for (const designOption of ['1','2','3']) {
+        const option2Design = designOption !== '3';
         fixture.window.document.documentElement.dataset.design=designOption;
-        const statusFilters = designOption === '2' ? ['all','available','mission','unavailable'] : ['serviceability','mission','unavailable'];
+        const statusFilters = option2Design ? ['all','available','mission','unavailable'] : ['serviceability','mission','unavailable'];
         for (const statusFilter of statusFilters) {
           fixture.window.document.body.innerHTML=renderScreen({screen,theme,unit:'All',date:'2026-10-22',designOption,statusFilter});
           const activeStyle = fixture.window.getComputedStyle(fixture.window.document.querySelector('.summary-filter.active'));
           assert.equal(activeStyle.outlineOffset, '-3px', `${screen}/${theme}/${designOption}/${statusFilter} all selection edges stay in bounds`);
-          if (designOption === '2') {
+          if (option2Design) {
             assert.equal(activeStyle.borderTopWidth, '2px');
             assert.equal(activeStyle.borderTopColor, theme === 'light' ? 'rgb(8, 124, 255)' : 'rgb(42, 178, 223)');
           }
@@ -205,6 +206,7 @@ const navigate = async selector => {
     for (const theme of ['light', 'dark']) {
       if (doc.documentElement.dataset.theme !== theme) click('#theme-toggle');
       for (const option of ['1', '2', '3']) {
+        const option2Design = option !== '3';
         change('[name="dashboard-design"][value="' + option + '"]', option);
         assert.equal(doc.documentElement.dataset.design, option);
         for (const category of ['all','sedan','suv','people-movers']) {
@@ -219,8 +221,8 @@ const navigate = async selector => {
           assert.equal(query('.status-share-mission').textContent, '20%');
           assert.equal(query('.status-share-unavailable').textContent, '10%');
           assert.equal(doc.querySelectorAll('.count-ring').length, 0);
-          assert.equal(doc.querySelectorAll('.service-ring').length, option==='2' ? 4 : 0);
-          assert.equal(doc.querySelectorAll('.option2-stat').length, option==='2' ? 8 : 0);
+          assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? 4 : 0);
+          assert.equal(doc.querySelectorAll('.option2-stat').length, option2Design ? 8 : 0);
         }
       }
     }
@@ -271,18 +273,19 @@ const navigate = async selector => {
     change('#unit-filter', 'All');
     change('#dashboard-date', '2026-10-22');
     for (const option of ['1', '2', '3']) {
+      const option2Design = option !== '3';
       change(`[name="dashboard-design"][value="${option}"]`, option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await navigate(`.category-${category} .round-arrow`);
         assert.equal(query('h1').textContent, {all:'All Vehicles', sedan:'Sedan', suv:'SUV', 'people-movers':'People Movers'}[category]);
-        assert.equal(doc.querySelectorAll('.summary-filter').length, option === '2' ? 4 : 3);
-        assert.equal(doc.querySelectorAll('.available-stat').length, option === '2' ? 1 : 0);
-        assert.equal(doc.querySelectorAll('.service-ring').length, option==='2' ? 1 : 0);
-        assert.equal(query('.summary-main').dataset.summaryFilter, option === '2' ? 'all' : 'serviceability');
-        assert.equal(doc.querySelectorAll('.status-field').length, option === '2' ? 0 : 1);
-        assert.equal(doc.querySelectorAll('.status-badge i').length, option === '2' && category !== 'all' ? 0 : doc.querySelectorAll('tbody tr').length);
-        assert.equal([...doc.querySelectorAll('.status-badge i')].every(mark => mark.textContent === (option === '2' ? '✓' : '')), true);
-        assert.equal(doc.querySelectorAll('.vehicle-type-cell').length, option === '2' && category === 'all' ? doc.querySelectorAll('tbody tr').length : 0);
+        assert.equal(doc.querySelectorAll('.summary-filter').length, option2Design ? 4 : 3);
+        assert.equal(doc.querySelectorAll('.available-stat').length, option2Design ? 1 : 0);
+        assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? 1 : 0);
+        assert.equal(query('.summary-main').dataset.summaryFilter, option2Design ? 'all' : 'serviceability');
+        assert.equal(doc.querySelectorAll('.status-field').length, option2Design ? 0 : 1);
+        assert.equal(doc.querySelectorAll('.status-badge i').length, option2Design && category !== 'all' ? 0 : doc.querySelectorAll('tbody tr').length);
+        assert.equal([...doc.querySelectorAll('.status-badge i')].every(mark => mark.textContent === (option2Design ? '✓' : '')), true);
+        assert.equal(doc.querySelectorAll('.vehicle-type-cell').length, option2Design && category === 'all' ? doc.querySelectorAll('tbody tr').length : 0);
         assert.doesNotMatch(query('.summary-grid').textContent, /Available\s*\/\s*Total/);
         await navigate('.back-button');
       }

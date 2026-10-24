@@ -16,11 +16,14 @@ const moduleObject = {exports: {}};
 vm.runInNewContext(code, {module: moduleObject, exports: moduleObject.exports, require: name => name.endsWith('.css') ? {} : qaRequire(name)});
 const {FleetCard, DetailSummaryCards} = moduleObject.exports;
 
+const renderings = new Map();
 for (const designOption of ['1', '2', '3']) {
+  const option2Design = designOption !== '3';
   const fleet = renderToStaticMarkup(React.createElement(FleetCard, {title: 'SUV', serviceability: 62, available: 30, total: 48, designOption, selected: true, onSelect() {}}));
   const detail = renderToStaticMarkup(React.createElement(DetailSummaryCards, {title: 'SUV', serviceability: 62, available: 30, total: 48, onMission: 11, notAvailable: 7, onMissionPercentage: 90, notAvailablePercentage: 90, designOption}));
+  renderings.set(designOption, {fleet, detail});
   assert.doesNotMatch(fleet + detail, /Available\s*\/\s*Total/);
-  if (designOption === '1') {
+  if (!option2Design) {
     assert.match(fleet, /30 \/ 48/);
     assert.match(detail, /30 \/ 48/);
   }
@@ -31,11 +34,11 @@ for (const designOption of ['1', '2', '3']) {
   assert.match(detail, />15%</);
   assert.doesNotMatch(detail, /vms-summary-card--available|>62%<|>90%</);
   assert.doesNotMatch(fleet + detail, /vms-count-ring/);
-  assert.equal((fleet.match(/class="vms-service-ring(?: is-alert)?"/g) || []).length, designOption === '2' ? 1 : 0);
-  assert.equal((detail.match(/class="vms-service-ring(?: is-alert)?"/g) || []).length, designOption === '2' ? 1 : 0);
-  assert.equal((fleet.match(/class="vms-option2-stat /g) || []).length, designOption === '2' ? 2 : 0);
-  assert.equal((detail.match(/class="vms-option2-stat /g) || []).length, designOption === '2' ? 2 : 0);
-  if (designOption === '2') {
+  assert.equal((fleet.match(/class="vms-service-ring(?: is-alert)?"/g) || []).length, option2Design ? 1 : 0);
+  assert.equal((detail.match(/class="vms-service-ring(?: is-alert)?"/g) || []).length, option2Design ? 1 : 0);
+  assert.equal((fleet.match(/class="vms-option2-stat /g) || []).length, option2Design ? 2 : 0);
+  assert.equal((detail.match(/class="vms-option2-stat /g) || []).length, option2Design ? 2 : 0);
+  if (option2Design) {
     assert.match(fleet, /class="vms-service-ring is-alert"[^>]*aria-label="63% serviceable"/);
     assert.match(fleet, /<span class="vms-service-ring__content"><strong>63%<\/strong><\/span>/);
     assert.doesNotMatch(fleet + detail, /<small>Serviceable<\/small>/);
@@ -44,7 +47,7 @@ for (const designOption of ['1', '2', '3']) {
     assert.match(fleet, /class="vms-option2-stat vms-option2-stat--total"[\s\S]*?<strong>48<\/strong><small>Total<\/small>/);
   } else assert.match(detail, /<small>Not Available<\/small>/);
   assert.equal((detail.match(/class="vms-summary-card /g) || []).length, 2);
-  if (designOption === '2') {
+  if (option2Design) {
     for (const theme of ['light', 'dark']) {
       const fixture = new JSDOM(`<section class="vms-serviceability" data-theme="${theme}">${fleet}${detail}</section>`, {virtualConsole:new VirtualConsole()});
       const style = fixture.window.document.createElement('style');
@@ -88,6 +91,9 @@ for (const designOption of ['1', '2', '3']) {
     assert.match(fleet, /<small>Total<\/small>/);
   }
 }
+const normalizeDesign = html => html.replace(/data-design="[12]"/g, 'data-design="shared"');
+assert.equal(normalizeDesign(renderings.get('1').fleet), normalizeDesign(renderings.get('2').fleet));
+assert.equal(normalizeDesign(renderings.get('1').detail), normalizeDesign(renderings.get('2').detail));
 for (const activeFilter of ['serviceability','mission','unavailable']) {
   const html=renderToStaticMarkup(React.createElement(DetailSummaryCards,{title:'SUV',available:30,total:48,onMission:11,notAvailable:7,activeFilter}));
   const fixture=new JSDOM(`<section class="vms-serviceability">${html}</section>`,{virtualConsole:new VirtualConsole()});

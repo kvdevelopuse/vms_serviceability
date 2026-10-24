@@ -28,9 +28,10 @@ assert.deepEqual(Object.keys(recordsByDate), ['2026-10-20', '2026-10-21', '2026-
 
 for (const theme of ['light', 'dark']) {
   for (const designOption of ['1', '2', '3']) {
+    const option2Design = designOption !== '3';
     const html = renderScreen({...selected, theme, designOption});
     assert.doesNotMatch(html, /Available\s*\/\s*Total/, 'remove labels, retain numeric ratios');
-    if (designOption === '1') {
+    if (!option2Design) {
       assert.ok(html.includes('84 / 120'));
       assert.ok(html.includes('30 / 48'));
     }
@@ -50,9 +51,9 @@ for (const theme of ['light', 'dark']) {
     assert.match(overviewMarkup, /<h2 id="overview-title">Fleet Overview<\/h2>/);
     assert.doesNotMatch(overviewMarkup, /class="period"|icon-calendar/, 'Fleet Overview must not contain a date selector in either option');
     assert.equal((html.match(/class="count-ring"/g) || []).length, 0);
-    assert.equal((html.match(/class="service-ring(?: is-alert)?"/g) || []).length, designOption === '2' ? 4 : 0);
-    assert.equal((html.match(/class="option2-stat /g) || []).length, designOption === '2' ? 8 : 0);
-    if (designOption === '2') {
+    assert.equal((html.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? 4 : 0);
+    assert.equal((html.match(/class="option2-stat /g) || []).length, option2Design ? 8 : 0);
+    if (option2Design) {
       assert.match(html, /class="icon icon-overview-bars"[^>]*><svg[^>]*viewBox="0 0 32 28"/);
       assert.match(html, /<h3 id="trend-title"><span class="icon icon-trend"[^>]*><svg/);
       assert.match(html, /class="trend-delta is-positive"><span class="icon icon-trend-up trend-direction"[^>]*><svg[\s\S]*?<\/span>\+3%<\/b>/);
@@ -64,11 +65,11 @@ for (const theme of ['light', 'dark']) {
     for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
       const detail = renderScreen({...circular, screen, theme, designOption});
       assert.doesNotMatch(detail, /Available\s*\/\s*Total/);
-      assert.equal((detail.match(/data-summary-filter=/g) || []).length, designOption === '2' ? 4 : 3);
+      assert.equal((detail.match(/data-summary-filter=/g) || []).length, option2Design ? 4 : 3);
       assert.equal((detail.match(/class="count-ring"/g) || []).length, 0);
-      assert.equal((detail.match(/class="service-ring(?: is-alert)?"/g) || []).length, designOption === '2' ? 1 : 0);
-      assert.equal((detail.match(/class="option2-stat /g) || []).length, designOption === '2' ? 1 : 0);
-      if (designOption === '2') {
+      assert.equal((detail.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? 1 : 0);
+      assert.equal((detail.match(/class="option2-stat /g) || []).length, option2Design ? 1 : 0);
+      if (option2Design) {
         assert.match(detail, /class="summary-grid option2-detail-summary"/);
         assert.match(detail, /data-summary-filter="all"[^>]*aria-pressed="true"/);
         assert.match(detail, /class="summary-stat available-stat[^"]*" data-summary-filter="available"/);
@@ -104,6 +105,8 @@ assert.match(oldest, /ending at 61%/);
 const all = renderScreen(base);
 assert.match(all, /120 total vehicles: 84 available, 24 on mission, 12 not available/);
 const allReferenceOverview = renderScreen({...base, designOption: '2'});
+const normalizeSelectedRadio = html => html.replace(/<fieldset class="design-options">[\s\S]*?<\/fieldset>/, '<fieldset class="design-options">shared selection</fieldset>');
+assert.equal(normalizeSelectedRadio(renderScreen({...base, designOption: '1'})), normalizeSelectedRadio(allReferenceOverview));
 assert.match(allReferenceOverview, /<h2 id="overview-title">Fleet Overview<\/h2><p role="status">All Vehicles \(120 Total\)<\/p>/);
 assert.match(allReferenceOverview, /class="trend-current">70%<\/strong>/);
 assert.match(allReferenceOverview, /class="trend-delta is-positive"><span class="icon icon-trend-up trend-direction"[^>]*>[\s\S]*?<\/span>\+3%<\/b><span>vs previous day \(67%\)<\/span>/);
@@ -117,6 +120,7 @@ assert.equal((allReferenceOverview.match(/class="insight-arrow"/g) || []).length
 assert.match(allReferenceOverview, /stroke="#08a875"/);
 
 const allReferenceDetail = renderScreen({...base, screen: 'all', designOption: '2'});
+assert.equal(renderScreen({...base, screen: 'all', designOption: '1'}), allReferenceDetail);
 assert.match(allReferenceDetail, /<h1[^>]*>All Vehicles<\/h1>/);
 assert.match(allReferenceDetail, /<span>Unit:<\/span><input[^>]* value="All"/);
 assert.match(allReferenceDetail, /<span>Dark Mode<\/span>/);
@@ -138,9 +142,9 @@ assert.match(allReferenceDetail, /<span class="page-size">10 \/ page /);
 
 const sedanReferenceDetail = renderScreen({...base, screen: 'sedan', designOption: '2'});
 assert.doesNotMatch(sedanReferenceDetail, /<th scope="col">Status<\/th>|class="status-badge /);
-const sedanOption1Detail = renderScreen({...base, screen: 'sedan', designOption: '1'});
-assert.match(sedanOption1Detail, /<th scope="col">Status<\/th>/);
-assert.match(sedanOption1Detail, /<span>Not Available<\/span>/);
+const sedanOption3Detail = renderScreen({...base, screen: 'sedan', designOption: '3'});
+assert.match(sedanOption3Detail, /<th scope="col">Status<\/th>/);
+assert.match(sedanOption3Detail, /<span>Not Available<\/span>/);
 
 const visibleStatuses = html => [...html.matchAll(/class="status-badge [^"]+"><i[^>]*>[\s\S]*?<\/i>([^<]+)<\/span>/g)].map(match => match[1]);
 assert.deepEqual(visibleStatuses(renderScreen({...base, screen: 'all', designOption: '2', page: 9})), [
@@ -152,7 +156,8 @@ for (const statusFilter of ['all', 'available', 'mission', 'unavailable']) {
   const detail = renderScreen({...base, screen: 'all', designOption: '2', statusFilter});
   assert.equal(/<th scope="col">Current Assignment<\/th>/.test(detail), statusFilter === 'all' || statusFilter === 'mission');
 }
-assert.match(renderScreen({...base, screen: 'all', designOption: '1', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
+assert.doesNotMatch(renderScreen({...base, screen: 'all', designOption: '1', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
+assert.match(renderScreen({...base, screen: 'all', designOption: '3', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
 
 const suvReferenceOverview = renderScreen({...base, selectedCategory: 'suv', designOption: '2'});
 assert.match(suvReferenceOverview, /<p role="status">All Vehicles \(120 Total\)<\/p>/);
