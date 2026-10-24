@@ -68,12 +68,16 @@ assert.equal(state.statusFilter, 'mission');
 assert.equal(transition(state, {type: 'set-date', date: '2026-10-20'}).page, 1, 'date change resets pagination');
 
 const dashboard = renderScreen({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null});
+assert.equal((dashboard.match(/name="dashboard-design"/g) || []).length, 2);
+assert.doesNotMatch(dashboard, /name="dashboard-design" value="3"|Option 3/);
 assert.match(dashboard, /id="unit-filter"/);
 assert.match(dashboard, /class="date-display">22-Oct-2026/);
 assert.match(dashboard, /id="dashboard-date" type="date" min="2026-10-20" max="2026-10-22" value="2026-10-22"/);
-assert.match(dashboard, /class="category-card category-all" data-category="all" style="--serviceability:70%"/);
+assert.match(dashboard, /class="category-card category-all option1-fill" data-category="all" style="--serviceability:70%"/);
 assert.doesNotMatch(dashboard, /card-select|is-selected|data-select-category/);
-assert.equal((dashboard.match(/class="service-ring(?: is-alert)?"/g) || []).length, 4);
+assert.equal((dashboard.match(/class="service-ring(?: is-alert)?"/g) || []).length, 0);
+assert.equal((dashboard.match(/ option1-fill"/g) || []).length, 4);
+assert.equal((dashboard.match(/class="service-percent">(?:70|75|63|67)%<\/strong>/g) || []).length, 4);
 assert.equal((dashboard.match(/class="option2-stat /g) || []).length, 8);
 for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.ok(dashboard.includes(`<a class="round-arrow" href="#${screen}"`));
@@ -92,7 +96,8 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 6);
   if (screen === 'suv') {
     const reference = renderScreen({screen, theme: 'light', unit: 'All', date: '2026-10-22'});
-    assert.match(reference, /class="service-ring is-alert"[^>]*aria-label="63% serviceable"/);
+    assert.match(reference, /class="summary-main percentage-card option1-fill[^"]*"[\s\S]*?class="service-percent">63%<\/strong>/);
+    assert.doesNotMatch(reference, /class="service-ring/);
     assert.match(reference, /\bavailable-stat\b|data-summary-filter="available"/);
     assert.doesNotMatch(reference, /62%/);
   }

@@ -38,6 +38,8 @@ const server = http.createServer((request, response) => {
     }
     if (process.argv.includes('--legacy-only')) return;
     await page.goto(`${origin}/prototype/index.html`);
+    assert.equal(await page.locator('[name="dashboard-design"]').count(), 2);
+    assert.equal(await page.locator('[name="dashboard-design"][value="3"]').count(), 0);
     const card = category => page.locator(`.category-${category}`);
     const arrow = category => page.locator(`.category-${category} .round-arrow`);
     const assertRingCenters = async () => {
@@ -67,8 +69,9 @@ const server = http.createServer((request, response) => {
     };
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
-      for (const option of ['1', '2', '3']) {
+      for (const option of ['1', '2']) {
         const option2Design = option !== '3';
+        const option1LightFill = option === '1' && theme === 'light';
         await design(option);
         for (const category of ['all','sedan','suv','people-movers']) {
           await card(category).click();
@@ -76,17 +79,26 @@ const server = http.createServer((request, response) => {
           await assertOverview();
         }
         assert.equal(await page.locator('.count-ring').count(), 0);
-        assert.equal(await page.locator('.service-ring').count(), option2Design ? 4 : 0);
+        assert.equal(await page.locator('.service-ring').count(), option2Design ? (option1LightFill ? 0 : 4) : 0);
         assert.equal(await page.locator('.option2-stat').count(), option2Design ? 8 : 0);
         if (option2Design) {
-          await assertRingCenters();
+          if (!option1LightFill) await assertRingCenters();
           const backgrounds = await page.locator('.category-card').evaluateAll(cards => cards.map(card => getComputedStyle(card).backgroundColor));
-          assert.equal(new Set(backgrounds).size, 4, 'reference design uses a distinct tint for every category');
           const expected = theme==='light' ? ['rgb(239, 248, 255)','rgb(255, 248, 235)','rgb(246, 242, 255)','rgb(238, 252, 247)'] : ['rgb(19, 45, 66)','rgb(56, 41, 24)','rgb(43, 35, 68)','rgb(21, 54, 46)'];
-          assert.deepEqual(backgrounds, expected);
-          const ringStyle = await page.locator('.service-ring').first().evaluate(node => ({image: getComputedStyle(node).backgroundImage, radius: getComputedStyle(node).borderRadius}));
-          assert.match(ringStyle.image, /conic-gradient/);
-          assert.equal(ringStyle.radius, '50%');
+          if (option1LightFill) {
+            const fills = await page.locator('.category-card').evaluateAll(cards => cards.map(card => getComputedStyle(card).backgroundImage));
+            const colors = ['239, 248, 255', '255, 248, 235', '246, 242, 255', '238, 252, 247'];
+            const percents = [70, 75, 63, 75];
+            fills.forEach((fill, index) => assert.match(fill, new RegExp(`linear-gradient\\(to right, rgb\\(${colors[index]}\\) 0px, rgb\\(${colors[index]}\\) ${percents[index]}%, rgb\\(255, 255, 255\\) ${percents[index]}%, rgb\\(255, 255, 255\\) 100%\\)`)));
+          } else {
+            assert.equal(new Set(backgrounds).size, 4, 'reference design uses a distinct tint for every category');
+            assert.deepEqual(backgrounds, expected);
+          }
+          if (!option1LightFill) {
+            const ringStyle = await page.locator('.service-ring').first().evaluate(node => ({image: getComputedStyle(node).backgroundImage, radius: getComputedStyle(node).borderRadius}));
+            assert.match(ringStyle.image, /conic-gradient/);
+            assert.equal(ringStyle.radius, '50%');
+          }
         } else {
           const background = await page.locator('.category-sedan').evaluate(node => getComputedStyle(node).backgroundImage);
           assert.match(background, /linear-gradient/);
@@ -95,13 +107,34 @@ const server = http.createServer((request, response) => {
       }
     }
 
-    await arrow('suv').click();
-    await page.waitForSelector('.detail-suv');
-    assert.equal(await page.locator('html').getAttribute('data-design'), '3');
-    assert.equal(await page.locator('.summary-filter').count(), 3);
-    assert.equal(await page.locator('.service-ring, .option2-stat').count(), 0);
-    await page.locator('.back-button').click();
-    await page.waitForSelector('.dashboard');
+    if (process.argv.includes('--landing-only')) {
+      assert.deepEqual(errors, []);
+      console.log('PASS: landing cards in all designs/themes, including all Option 1 light card fills.');
+      return;
+    }
+
+    if (process.argv.includes('--option1-detail-fill-only')) {
+      if (await page.locator('html').getAttribute('data-theme') !== 'light') await page.locator('#theme-toggle').click();
+      await design('1');
+      const colors = {all:'239, 248, 255', sedan:'255, 248, 235', suv:'246, 242, 255', 'people-movers':'238, 252, 247'};
+      const percents = {all:70, sedan:75, suv:63, 'people-movers':75};
+      for (const category of Object.keys(percents)) {
+        await arrow(category).click();
+        await page.waitForSelector(`.detail-${category}`);
+        assert.equal(await page.locator('.summary-main .service-ring').count(), 0);
+        assert.equal((await page.locator('.summary-main .service-percent').innerText()).trim(), `${percents[category]}%`);
+        assert.equal(await page.locator('.summary-grid > .option1-fill').count(), 1);
+        const fill = await page.locator('.summary-main').evaluate(card => getComputedStyle(card).backgroundImage);
+        assert.match(fill, new RegExp(`linear-gradient\\(to right, rgb\\(${colors[category]}\\) 0px, rgb\\(${colors[category]}\\) ${percents[category]}%, rgb\\(255, 255, 255\\) ${percents[category]}%, rgb\\(255, 255, 255\\) 100%\\)`));
+        assert.equal(await page.locator('.summary-stat').evaluateAll(cards => cards.every(card => getComputedStyle(card).backgroundImage === 'none')), true);
+        await page.locator('.back-button').click();
+        await page.waitForSelector('.dashboard');
+      }
+      assert.deepEqual(errors, []);
+      console.log('PASS: Option 1 light detail Serviceability card fill; all other detail cards unchanged.');
+      return;
+    }
+
     await design('2');
 
     // Card bodies are static; only the separate arrows navigate.
@@ -142,7 +175,7 @@ const server = http.createServer((request, response) => {
 
     await page.locator('#unit-filter').selectOption('All');
     await page.locator('#dashboard-date').fill('2026-10-22');
-    for (const option of ['1', '2', '3']) {
+    for (const option of ['1', '2']) {
       const option2Design = option !== '3';
       await design(option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
@@ -183,7 +216,7 @@ const server = http.createServer((request, response) => {
     if (await page.locator('html').getAttribute('data-theme') !== 'light') await page.locator('#theme-toggle').click();
     for (const [width, height] of [[1920,1080], [1366,768], [800,900], [390,844], [320,740]]) {
       await page.setViewportSize({width, height});
-      for (const option of ['1', '2', '3']) {
+      for (const option of ['1', '2']) {
         await design(option);
         const geometry = await page.evaluate(() => {
           const box = selector => {const b = document.querySelector(selector).getBoundingClientRect(); return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,x:(b.left+b.right)/2,y:(b.top+b.bottom)/2};};

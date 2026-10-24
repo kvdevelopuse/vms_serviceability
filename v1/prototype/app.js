@@ -370,6 +370,8 @@ function usesOption2Design(designOption) {
   return designOption === '1' || designOption === '2';
 }
 
+const SHOW_OPTION_3 = false;
+
 function transition(state, action) {
   if (action.type === 'set-design' && ['1', '2', '3'].includes(action.option)) {
     return {...state, designOption: action.option};
@@ -408,7 +410,7 @@ function header(screen, state) {
       <div class="heading-stack"><h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
       ${dashboard ? '' : unitControl('detail-unit', state.unit, true)}</div>
     </div>
-    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', '3'].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
+    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', ...(SHOW_OPTION_3 ? ['3'] : [])].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
       <label class="date date-picker dashboard-header-date" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>
       <div class="dashboard-unit">${unitControl('unit-filter', state.unit)}</div>` : ''}
     <div class="header-tools">
@@ -428,8 +430,10 @@ function vehicleArt(kind) {
 function dashboard(state) {
   const cards = Object.keys(fleet).map(key => {
     const data = displayData(state.unit, key, state.date);
-    return `<article class="category-card category-${key}" data-category="${key}" style="--serviceability:${data.percent}%">
-      <div class="category-numbers"><div>${serviceabilityValue(data.percent, state.designOption)}</div><div class="category-total">${countValue(data.available, data.total, state.designOption)}</div></div>
+    const option1LightFill = state.designOption === '1' && state.theme === 'light';
+    const serviceability = option1LightFill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption);
+    return `<article class="category-card category-${key}${option1LightFill ? ' option1-fill' : ''}" data-category="${key}" style="--serviceability:${data.percent}%">
+      <div class="category-numbers"><div>${serviceability}</div><div class="category-total">${countValue(data.available, data.total, state.designOption)}</div></div>
       ${vehicleArt(key)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
     </article>`;
@@ -501,6 +505,7 @@ function trendChart(state) {
 function summary(screen, state) {
   const data = displayData(state.unit, screen, state.date);
   const option2 = usesOption2Design(state.designOption);
+  const option1LightFill = state.designOption === '1' && state.theme === 'light';
   const primaryFilter = option2 ? 'all' : 'serviceability';
   const filterClass = filter => `summary-filter${state.statusFilter === filter ? ' active' : ''}`;
   const filterAttributes = filter => `data-summary-filter="${filter}" role="button" tabindex="0" aria-pressed="${state.statusFilter === filter}"`;
@@ -509,7 +514,7 @@ function summary(screen, state) {
     : countValue(data.available, data.total, state.designOption);
   const available = option2 ? `<div class="summary-stat available-stat ${filterClass('available')}" ${filterAttributes('available')}><span class="status-icon available-icon">${icon('detail-available')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.percent}%</b></div>` : '';
   return `<section class="summary-grid${option2 ? ' option2-detail-summary' : ''}" aria-label="${data.title} serviceability summary">
-    <div class="summary-main percentage-card ${filterClass(primaryFilter)}" ${filterAttributes(primaryFilter)} style="${percentageStyle(data.percent)}"><div class="summary-percent">${serviceabilityValue(data.percent, state.designOption)}</div>
+    <div class="summary-main percentage-card${option1LightFill ? ' option1-fill' : ''} ${filterClass(primaryFilter)}" ${filterAttributes(primaryFilter)} style="${percentageStyle(data.percent)}"><div class="summary-percent">${option1LightFill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption)}</div>
     ${vehicleArt(screen)}
     <div class="summary-total">${total}</div></div>
     ${available}

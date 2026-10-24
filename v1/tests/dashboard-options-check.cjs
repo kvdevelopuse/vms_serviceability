@@ -29,6 +29,7 @@ assert.deepEqual(Object.keys(recordsByDate), ['2026-10-20', '2026-10-21', '2026-
 for (const theme of ['light', 'dark']) {
   for (const designOption of ['1', '2', '3']) {
     const option2Design = designOption !== '3';
+    const option1LightFill = designOption === '1' && theme === 'light';
     const html = renderScreen({...selected, theme, designOption});
     assert.doesNotMatch(html, /Available\s*\/\s*Total/, 'remove labels, retain numeric ratios');
     if (!option2Design) {
@@ -37,7 +38,7 @@ for (const theme of ['light', 'dark']) {
     }
     assert.match(html, /name="dashboard-design" value="1"/);
     assert.match(html, /name="dashboard-design" value="2"/);
-    assert.match(html, /name="dashboard-design" value="3"/);
+    assert.doesNotMatch(html, /name="dashboard-design" value="3"|Option 3/);
     assert.doesNotMatch(html, /card-select|data-select-category|is-selected/);
     assert.match(html, /120 total vehicles: 84 available, 24 on mission, 12 not available/);
     assert.match(html, /30 of 48 vehicles available/);
@@ -51,14 +52,27 @@ for (const theme of ['light', 'dark']) {
     assert.match(overviewMarkup, /<h2 id="overview-title">Fleet Overview<\/h2>/);
     assert.doesNotMatch(overviewMarkup, /class="period"|icon-calendar/, 'Fleet Overview must not contain a date selector in either option');
     assert.equal((html.match(/class="count-ring"/g) || []).length, 0);
-    assert.equal((html.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? 4 : 0);
+    assert.equal((html.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? (option1LightFill ? 0 : 4) : 0);
     assert.equal((html.match(/class="option2-stat /g) || []).length, option2Design ? 8 : 0);
+    for (const [category, percent] of Object.entries({all:70, sedan:75, suv:63, 'people-movers':75})) {
+      const categoryCard = html.match(new RegExp(`<article class="category-card category-${category}[\\s\\S]*?<\\/article>`))[0];
+      if (option1LightFill) {
+        assert.match(categoryCard, new RegExp(`category-${category} option1-fill`));
+        assert.match(categoryCard, new RegExp(`class="service-percent">${percent}%<\\/strong>`));
+        assert.doesNotMatch(categoryCard, /class="service-ring/);
+      } else if (option2Design) {
+        assert.match(categoryCard, /class="service-ring(?: is-alert)?"/);
+        assert.doesNotMatch(categoryCard, /option1-fill/);
+      }
+    }
     if (option2Design) {
       assert.match(html, /class="icon icon-overview-bars"[^>]*><svg[^>]*viewBox="0 0 32 28"/);
       assert.match(html, /<h3 id="trend-title"><span class="icon icon-trend"[^>]*><svg/);
       assert.match(html, /class="trend-delta is-positive"><span class="icon icon-trend-up trend-direction"[^>]*><svg[\s\S]*?<\/span>\+3%<\/b>/);
-      assert.match(html, /class="service-ring is-alert"[^>]*aria-label="63% serviceable"/);
-      assert.match(html, /<span class="service-ring-content"><strong>63%<\/strong><\/span>/);
+      if (!option1LightFill) {
+        assert.match(html, /class="service-ring is-alert"[^>]*aria-label="63% serviceable"/);
+        assert.match(html, /<span class="service-ring-content"><strong>63%<\/strong><\/span>/);
+      }
       assert.match(html, /class="option2-stat option2-stat-available"[\s\S]*?<strong>30<\/strong><small>Available<\/small>/);
       assert.match(html, /class="option2-stat option2-stat-total"[\s\S]*?<strong>48<\/strong><small>Total<\/small>/);
     }
@@ -67,9 +81,14 @@ for (const theme of ['light', 'dark']) {
       assert.doesNotMatch(detail, /Available\s*\/\s*Total/);
       assert.equal((detail.match(/data-summary-filter=/g) || []).length, option2Design ? 4 : 3);
       assert.equal((detail.match(/class="count-ring"/g) || []).length, 0);
-      assert.equal((detail.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? 1 : 0);
+      assert.equal((detail.match(/class="service-ring(?: is-alert)?"/g) || []).length, option2Design ? (option1LightFill ? 0 : 1) : 0);
       assert.equal((detail.match(/class="option2-stat /g) || []).length, option2Design ? 1 : 0);
       if (option2Design) {
+        if (option1LightFill) {
+          assert.match(detail, new RegExp(`class="summary-main percentage-card option1-fill[^"]*"[\\s\\S]*?class="service-percent">${{all:70, sedan:75, suv:63, 'people-movers':75}[screen]}%<\\/strong>`));
+        } else {
+          assert.match(detail, /class="summary-main percentage-card (?!option1-fill)/);
+        }
         assert.match(detail, /class="summary-grid option2-detail-summary"/);
         assert.match(detail, /data-summary-filter="all"[^>]*aria-pressed="true"/);
         assert.match(detail, /class="summary-stat available-stat[^"]*" data-summary-filter="available"/);
@@ -106,7 +125,8 @@ const all = renderScreen(base);
 assert.match(all, /120 total vehicles: 84 available, 24 on mission, 12 not available/);
 const allReferenceOverview = renderScreen({...base, designOption: '2'});
 const normalizeSelectedRadio = html => html.replace(/<fieldset class="design-options">[\s\S]*?<\/fieldset>/, '<fieldset class="design-options">shared selection</fieldset>');
-assert.equal(normalizeSelectedRadio(renderScreen({...base, designOption: '1'})), normalizeSelectedRadio(allReferenceOverview));
+const normalizeOption1Cards = html => normalizeSelectedRadio(html).replace(/<article class="category-card category-(?:all|sedan|suv|people-movers)[\s\S]*?<\/article>/g, '<article class="category-card">shared card</article>');
+assert.equal(normalizeOption1Cards(renderScreen({...base, designOption: '1'})), normalizeOption1Cards(allReferenceOverview));
 assert.match(allReferenceOverview, /<h2 id="overview-title">Fleet Overview<\/h2><p role="status">All Vehicles \(120 Total\)<\/p>/);
 assert.match(allReferenceOverview, /class="trend-current">70%<\/strong>/);
 assert.match(allReferenceOverview, /class="trend-delta is-positive"><span class="icon icon-trend-up trend-direction"[^>]*>[\s\S]*?<\/span>\+3%<\/b><span>vs previous day \(67%\)<\/span>/);
@@ -120,7 +140,10 @@ assert.equal((allReferenceOverview.match(/class="insight-arrow"/g) || []).length
 assert.match(allReferenceOverview, /stroke="#08a875"/);
 
 const allReferenceDetail = renderScreen({...base, screen: 'all', designOption: '2'});
-assert.equal(renderScreen({...base, screen: 'all', designOption: '1'}), allReferenceDetail);
+const option1ReferenceDetail = renderScreen({...base, screen: 'all', designOption: '1'});
+const normalizeDetailServiceabilityCard = html => html.replace(/    <div class="summary-main[\s\S]*?(?=\n    <div class="summary-stat available-stat)/, '    <div class="summary-main">shared card</div>');
+assert.equal(normalizeDetailServiceabilityCard(option1ReferenceDetail), normalizeDetailServiceabilityCard(allReferenceDetail));
+assert.match(option1ReferenceDetail, /class="summary-main percentage-card option1-fill[^"]*"[\s\S]*?class="service-percent">70%<\/strong>/);
 assert.match(allReferenceDetail, /<h1[^>]*>All Vehicles<\/h1>/);
 assert.match(allReferenceDetail, /<span>Unit:<\/span><input[^>]* value="All"/);
 assert.match(allReferenceDetail, /<span>Dark Mode<\/span>/);

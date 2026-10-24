@@ -46,11 +46,36 @@ for (const theme of ['light', 'dark']) {
       return fixture;
     });
     const selector = screen === 'dashboard' ? '.category-suv' : '.summary-main';
-    const properties = ['background', 'border', 'display', 'gridTemplateColumns', 'minHeight'];
+    const properties = ['border', 'display', 'gridTemplateColumns', 'minHeight', ...(theme === 'light' ? [] : ['background'])];
     const computed = fixtures.map(fixture => fixture.window.getComputedStyle(fixture.window.document.querySelector(selector)));
     for (const property of properties) assert.equal(computed[1][property], computed[0][property], `Option 1 ${theme}/${screen} ${property} matches Option 2`);
     fixtures.forEach(fixture => fixture.window.close());
   }
+}
+const option1LightFillFixture = new JSDOM(`<html data-theme="light" data-design="1"><body>${renderScreen({screen:'dashboard',theme:'light',unit:'All',date:'2026-10-22',designOption:'1'})}</body></html>`, {virtualConsole:new VirtualConsole()});
+const option1LightFillStyle = option1LightFillFixture.window.document.createElement('style');
+option1LightFillStyle.textContent = stylesheet.textContent;
+option1LightFillFixture.window.document.head.append(option1LightFillStyle);
+for (const [category, percent] of Object.entries({all:70, sedan:75, suv:63, 'people-movers':75})) {
+  const option1Card = option1LightFillFixture.window.document.querySelector(`.category-${category}`);
+  assert.ok(option1Card.classList.contains('option1-fill'));
+  assert.equal(option1Card.querySelectorAll('.service-ring').length, 0);
+  assert.equal(option1Card.querySelector('.service-percent').textContent, `${percent}%`);
+  assert.equal(option1LightFillFixture.window.getComputedStyle(option1Card).background, 'linear-gradient(to right, var(--option2-surface) 0 var(--serviceability), #fff var(--serviceability) 100%)');
+}
+option1LightFillFixture.window.close();
+for (const [screen, percent] of Object.entries({all:70, sedan:75, suv:63, 'people-movers':75})) {
+  const fixture = new JSDOM(`<html data-theme="light" data-design="1"><body>${renderScreen({screen,theme:'light',unit:'All',date:'2026-10-22',designOption:'1'})}</body></html>`, {virtualConsole:new VirtualConsole()});
+  const style = fixture.window.document.createElement('style');
+  style.textContent = stylesheet.textContent;
+  fixture.window.document.head.append(style);
+  const serviceabilityCard = fixture.window.document.querySelector('.summary-main');
+  assert.ok(serviceabilityCard.classList.contains('option1-fill'));
+  assert.equal(serviceabilityCard.querySelectorAll('.service-ring').length, 0);
+  assert.equal(serviceabilityCard.querySelector('.service-percent').textContent, `${percent}%`);
+  assert.equal(fixture.window.getComputedStyle(serviceabilityCard).background, 'linear-gradient(to right, var(--option2-surface) 0 var(--percentage), #fff var(--percentage) 100%)');
+  assert.equal(fixture.window.document.querySelectorAll('.summary-stat.option1-fill').length, 0);
+  fixture.window.close();
 }
 headerStyleFixture.window.document.body.insertAdjacentHTML('beforeend', renderScreen({screen:'suv',theme:'light',unit:'All',date:'2026-10-22',statusFilter:'mission'}));
 assert.equal(headerStyleFixture.window.getComputedStyle(headerStyleFixture.window.document.querySelector('.summary-filter.active')).outlineOffset, '-3px', 'selection outline must stay inside the detail overflow clip');
@@ -202,11 +227,14 @@ const navigate = async selector => {
   try {
     assert.equal(doc.querySelectorAll('.card-select, .category-card.is-selected').length, 0);
     assert.equal(doc.documentElement.dataset.design, '1');
+    assert.equal(doc.querySelectorAll('[name="dashboard-design"]').length, 2);
+    assert.equal(doc.querySelector('[name="dashboard-design"][value="3"]'), null);
     const immutable = JSON.stringify(window.prototypeApi.recordsByDate);
     for (const theme of ['light', 'dark']) {
       if (doc.documentElement.dataset.theme !== theme) click('#theme-toggle');
-      for (const option of ['1', '2', '3']) {
+      for (const option of ['1', '2']) {
         const option2Design = option !== '3';
+        const option1LightFill = option === '1' && theme === 'light';
         change('[name="dashboard-design"][value="' + option + '"]', option);
         assert.equal(doc.documentElement.dataset.design, option);
         for (const category of ['all','sedan','suv','people-movers']) {
@@ -221,16 +249,11 @@ const navigate = async selector => {
           assert.equal(query('.status-share-mission').textContent, '20%');
           assert.equal(query('.status-share-unavailable').textContent, '10%');
           assert.equal(doc.querySelectorAll('.count-ring').length, 0);
-          assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? 4 : 0);
+          assert.equal(doc.querySelectorAll('.service-ring').length, option2Design ? (option1LightFill ? 0 : 4) : 0);
           assert.equal(doc.querySelectorAll('.option2-stat').length, option2Design ? 8 : 0);
         }
       }
     }
-    await navigate('.category-suv .round-arrow .icon');
-    assert.equal(doc.documentElement.dataset.design, '3');
-    assert.equal(doc.querySelectorAll('.summary-filter').length, 3);
-    assert.equal(doc.querySelectorAll('.service-ring, .option2-stat').length, 0);
-    await navigate('.back-button');
     change('[name="dashboard-design"][value="2"]', '2');
     click('.category-sedan');
     change('#unit-filter', 'Unit C');
@@ -272,7 +295,7 @@ const navigate = async selector => {
     assert.doesNotMatch(query('.trend-chart').textContent, /21-Oct|22-Oct/);
     change('#unit-filter', 'All');
     change('#dashboard-date', '2026-10-22');
-    for (const option of ['1', '2', '3']) {
+    for (const option of ['1', '2']) {
       const option2Design = option !== '3';
       change(`[name="dashboard-design"][value="${option}"]`, option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {

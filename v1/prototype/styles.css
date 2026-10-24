@@ -699,6 +699,7 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
 :root:is([data-design="1"], [data-design="2"]) .category-numbers > div:first-child { align-items: center; justify-content: center; }
 :root:is([data-design="1"], [data-design="2"]) .category-total { gap: 9px; padding: 0; text-align: left; }
 :root:is([data-design="1"], [data-design="2"]) .category-card .vehicle-art { grid-row: 3; height: 112px; margin: 0; padding-right: 20px; }
+:root[data-theme="light"][data-design="1"] .category-card.option1-fill { background: linear-gradient(to right, var(--option2-surface) 0 var(--serviceability), #fff var(--serviceability) 100%); }
 .service-ring { position: relative; display: grid; place-items: center; width: 132px; height: 132px; flex: 0 0 auto; margin: 0; border-radius: 50%; background: conic-gradient(from -90deg, var(--option2-ring) var(--ring-value), var(--option2-track) 0); box-shadow: 0 9px 20px rgb(28 55 82 / .08); }
 .service-ring::before { position: absolute; inset: 11px; border-radius: 50%; background: var(--option2-surface); content: ""; }
 :root:is([data-design="1"], [data-design="2"]) .percentage-card.active .service-ring::before { background: var(--option2-selected); }
@@ -722,6 +723,7 @@ html:not([data-screen="dashboard"]) #app { height: 100dvh; display: flex; flex-d
 
 /* Option 2 detail summary follows esnaad_style/option2_details.png. */
 :root:is([data-design="1"], [data-design="2"]) .detail .percentage-card.active { background: var(--option2-surface); }
+:root[data-theme="light"][data-design="1"] .detail .summary-main.option1-fill { background: linear-gradient(to right, var(--option2-surface) 0 var(--percentage), #fff var(--percentage) 100%); }
 :root:is([data-design="1"], [data-design="2"]) .detail .percentage-card.active .service-ring::before { background: var(--option2-surface); }
 :root:is([data-design="1"], [data-design="2"]) .detail .option2-detail-summary { grid-template-columns: 2fr repeat(3, minmax(0, 1fr)); gap: 16px; }
 :root:is([data-design="1"], [data-design="2"]) .detail .option2-detail-summary > * { height: 156px; min-height: 156px; border-width: 1px; }

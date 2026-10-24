@@ -1,5 +1,7 @@
 # Option 3 Using Option 1 Design Implementation Plan
 
+> Current state: the implementation is retained, but its radio is hidden by `SHOW_OPTION_3 = false` in `prototype/app.js`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a distinct Option 3 selection that renders and behaves exactly like Option 1 on landing and detail screens.

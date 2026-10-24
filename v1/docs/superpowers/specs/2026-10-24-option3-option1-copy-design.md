@@ -1,5 +1,7 @@
 # Option 3 Using Option 1 Design
 
+> Current state: the implementation is retained, but its radio is hidden by `SHOW_OPTION_3 = false` in `prototype/app.js`.
+
 ## Intent
 
 Add an **Option 3** radio choice whose landing and details screens look and behave exactly like Option 1 while retaining `designOption="3"` as its selected state.
