@@ -67,7 +67,6 @@
         }
         if (/\b(?:fetch|localStorage|sessionStorage|axios|react-router|window\.)\b/.test(reactSource)) throw new Error('React components contained an ERP architecture dependency');
         if (!reactStyles.includes('.vms-serviceability') || !reactStyles.includes('[data-theme="dark"]') || !reactReadme.includes('ERP integration inputs')) throw new Error('React styles or integration guidance were incomplete');
-        if (!/export function DetailSummaryCards\(\{[\s\S]*?serviceability,/.test(reactSource) || !reactSource.includes('serviceability == null') || !reactSource.includes('availablePercentage == null')) throw new Error('React detail summary did not support preserved displayed percentages');
         if (reactSource.includes("id = 'detail-unit'") || !reactSource.includes("...(id ? {id} : {})")) throw new Error('React Unit field did not avoid duplicate default IDs');
         if (!reactSource.includes('aria-disabled="true"') || reactReadme.includes('onUnitTextChange') || !reactReadme.includes('disabled Unit text input')) throw new Error('React Unit field was not a disabled display control');
 
@@ -83,8 +82,7 @@
           reactFixture.className = 'vms-serviceability';
           reactFixture.style.width = `${width}px`;
           reactFixture.innerHTML = `<div class="vms-detail-summary">
-            <button class="vms-serviceability-card" style="--vms-percentage:62%"><span class="vms-serviceability-card__percentage"><strong>62%</strong></span><span></span><span class="vms-serviceability-card__total"><strong>30 / 48</strong><small>Available / Total</small></span></button>
-            <button class="vms-summary-card vms-summary-card--available"><span class="vms-summary-card__icon">&#10003;</span><span><strong>30</strong><small>Available</small></span><b>62%</b></button>
+            <button class="vms-serviceability-card" style="--vms-percentage:63%"><span class="vms-serviceability-card__percentage"><strong>63%</strong></span><span></span><span class="vms-serviceability-card__total"><strong>30 / 48</strong></span></button>
             <button class="vms-summary-card vms-summary-card--mission"><span class="vms-summary-card__icon">&#8594;</span><span><strong>11</strong><small>On Mission</small></span><b>23%</b></button>
             <button class="vms-summary-card vms-summary-card--unavailable"><span class="vms-summary-card__icon">!</span><span><strong>7</strong><small>Not Available</small></span><b>15%</b></button>
           </div>`;
@@ -226,7 +224,7 @@
         if (unitSelect.value !== 'All') throw new Error(`default Unit was ${unitSelect.value}`);
         if (!dateInput || dateInput.type !== 'date' || dateInput.value !== '2026-10-22' || dateInput.min !== '2026-10-20' || dateInput.max !== '2026-10-22') throw new Error('dashboard date picker default or limits were incorrect');
         if (doc.querySelector('.date-display')?.textContent.trim() !== '22-Oct-2026') throw new Error('dashboard date display did not use dd-MMM-yyyy');
-        if (api.formatDate('2026-09-05') !== '05-Sep-2026' || JSON.stringify([...doc.querySelectorAll('.chart-labels text')].slice(-5).map(node => node.textContent)) !== JSON.stringify(['01-Oct-2026', '07-Oct-2026', '13-Oct-2026', '19-Oct-2026', '22-Oct-2026'])) throw new Error('trend or padded dates did not use dd-MMM-yyyy');
+        if (api.formatDate('2026-09-05') !== '05-Sep-2026' || JSON.stringify([...doc.querySelectorAll('.chart-labels text')].slice(-3).map(node => node.textContent)) !== JSON.stringify(['20-Oct-2026', '21-Oct-2026', '22-Oct-2026'])) throw new Error('real snapshot trend dates did not use dd-MMM-yyyy');
         const dashboardPercentages = [...doc.querySelectorAll('.category-numbers > div:first-child')].map(node => node.textContent.trim());
         const expectedDashboard = Object.values(expectedPercentages);
         if (JSON.stringify(dashboardPercentages) !== JSON.stringify(expectedDashboard)) {
@@ -289,10 +287,10 @@
           if (contrastRatio(percentageStyle.color, percentagePill.backgroundColor) < 4.5) throw new Error('Light Mode status-card percentage contrast was below 4.5:1');
           if (Number(percentageStyle.fontWeight) < 600 || percentagePill.backgroundColor === 'rgba(0, 0, 0, 0)' || Number.parseFloat(percentagePill.borderRadius) < 20) throw new Error('Light Mode status percentage did not use the premium pill treatment');
         }
-        if (getComputedStyle(doc.querySelector('.available-stat b')).color === getComputedStyle(doc.querySelector('.unavailable-stat b')).color) throw new Error('Serviceable and unserviceable percentage indicators were not visually distinct');
-        if (getComputedStyle(doc.querySelector('.available-stat b')).color !== 'rgb(7, 95, 70)' || getComputedStyle(doc.querySelector('.unavailable-stat b')).color !== 'rgb(150, 50, 71)') throw new Error('Light Mode percentage indicators did not match the serviceability colors');
+        if (getComputedStyle(doc.querySelector('.summary-percent strong')).color === getComputedStyle(doc.querySelector('.unavailable-stat b')).color) throw new Error('Serviceable and unserviceable percentage indicators were not visually distinct');
+        if (getComputedStyle(doc.querySelector('.summary-percent strong')).color !== 'rgb(7, 95, 70)' || getComputedStyle(doc.querySelector('.unavailable-stat b')).color !== 'rgb(150, 50, 71)') throw new Error('Light Mode percentage indicators did not match the serviceability colors');
         const statusCardStyles = [...doc.querySelectorAll('.summary-stat')].map(card => getComputedStyle(card));
-        if (statusCardStyles.some(style => style.backgroundImage.includes('linear-gradient') || style.boxShadow === 'none') || new Set(statusCardStyles.map(style => style.backgroundColor)).size !== 3) throw new Error('non-Serviceability summary cards did not use distinct solid professional surfaces');
+        if (statusCardStyles.some(style => style.backgroundImage.includes('linear-gradient') || style.boxShadow === 'none') || new Set(statusCardStyles.map(style => style.backgroundColor)).size !== 2) throw new Error('non-Serviceability summary cards did not use distinct solid professional surfaces');
         if (api.percentageStyle(0) !== '--percentage:0%' || api.percentageStyle(100) !== '--percentage:100%') throw new Error('0% and 100% gradient endpoints were not supported');
         if (![...doc.querySelectorAll('tbody tr td:nth-last-child(2)')].every(cell => cell.textContent.trim().startsWith('21-Oct-2026'))) throw new Error('table dates did not use selected dd-MMM-yyyy date');
         if ([...doc.querySelectorAll('th')].some(cell => cell.textContent.trim() === 'Actions')) throw new Error('Actions column remained');
@@ -321,9 +319,9 @@
         doc.querySelector('[data-summary-filter="unavailable"]').click();
         await delay(75);
         if (doc.querySelectorAll('tbody tr').length !== 1 || !doc.querySelector('tbody .status-badge.unavailable')) throw new Error('Not Available card did not filter the current Unit/date');
-        doc.querySelector('[data-summary-filter="available"]').click();
+        doc.querySelector('[data-summary-filter="serviceability"]').click();
         await delay(75);
-        if (doc.querySelectorAll('tbody tr').length !== 6 || !doc.querySelector('[data-summary-filter="available"]').classList.contains('active')) throw new Error('Available card did not filter or become active');
+        if (doc.querySelectorAll('tbody tr').length !== 6 || !doc.querySelector('[data-summary-filter="serviceability"]').classList.contains('active') || doc.querySelector('[data-summary-filter="available"]')) throw new Error('Serviceability did not replace the duplicate Available filter');
         let resetState = {screen: 'suv', theme: 'light', unit: 'Unit C', date: '2026-10-21', activeRecordId: null, statusFilter: 'mission', page: 2};
         resetState = api.transition(resetState, {type: 'set-date', date: '2026-10-20'});
         if (resetState.page !== 1 || resetState.statusFilter !== 'mission') throw new Error('date change did not reset pagination while retaining the selected filter');
@@ -402,8 +400,8 @@
         if (doc.documentElement.dataset.theme !== 'dark' || !dialog) throw new Error('dialog did not remain open in Dark Mode');
         if (!getComputedStyle(doc.querySelector('.summary-main')).backgroundImage.includes('linear-gradient') || [...doc.querySelectorAll('.summary-stat')].some(card => getComputedStyle(card).backgroundImage.includes('linear-gradient'))) throw new Error('Dark Mode did not keep the gradient exclusive to Serviceability');
         const darkStatusStyles = [...doc.querySelectorAll('.summary-stat')].map(card => getComputedStyle(card));
-        if (darkStatusStyles.some(style => style.boxShadow === 'none') || new Set(darkStatusStyles.map(style => style.backgroundColor)).size !== 3) throw new Error('Dark Mode status cards did not keep distinct professional surfaces');
-        if (getComputedStyle(doc.querySelector('.summary-percent strong')).color !== 'rgb(131, 230, 191)' || getComputedStyle(doc.querySelector('.available-stat b')).color !== 'rgb(131, 230, 191)' || getComputedStyle(doc.querySelector('.unavailable-stat b')).color !== 'rgb(255, 154, 170)') throw new Error('Dark Mode percentage indicators did not match the serviceability colors');
+        if (darkStatusStyles.some(style => style.boxShadow === 'none') || new Set(darkStatusStyles.map(style => style.backgroundColor)).size !== 2) throw new Error('Dark Mode status cards did not keep distinct professional surfaces');
+        if (getComputedStyle(doc.querySelector('.summary-percent strong')).color !== 'rgb(131, 230, 191)' || getComputedStyle(doc.querySelector('.unavailable-stat b')).color !== 'rgb(255, 154, 170)') throw new Error('Dark Mode percentage indicators did not match the serviceability colors');
         for (const card of doc.querySelectorAll('.summary-stat')) {
           const percentageNode = card.querySelector('b');
           const percentageStyle = getComputedStyle(percentageNode);
@@ -468,16 +466,15 @@
         for (const screen of Object.keys(expectedPercentages)) {
           frame.contentWindow.location.hash = 'dashboard';
           await delay(100);
-          const card = doc.querySelector(`.category-${screen}`);
-          card.click();
+          doc.querySelector(`.category-${screen}`).click();
           await delay(100);
           if (frame.contentWindow.location.hash !== '#dashboard') throw new Error(`${screen} card background navigated`);
           for (const selector of ['h2', '.service-percent', '.vehicle-art']) {
-            card.querySelector(selector).click();
+            doc.querySelector(`.category-${screen} ${selector}`).click();
             await delay(100);
             if (frame.contentWindow.location.hash !== '#dashboard') throw new Error(`${screen} ${selector} navigated`);
           }
-          card.querySelector('.round-arrow').click();
+          doc.querySelector(`.category-${screen} .round-arrow`).click();
           await delay(100);
           if (frame.contentWindow.location.hash !== `#${screen}` || doc.querySelector('h1').textContent !== expectedTitles[screen]) {
             throw new Error(`${screen} arrow did not open its detail page`);
@@ -489,7 +486,7 @@
           await delay(100);
           const rendered = doc.querySelector('.summary-percent').textContent.trim();
           if (rendered !== percentage) throw new Error(`${screen} detail percentage was ${JSON.stringify(rendered)}`);
-          if (screen === 'suv' && doc.querySelector('.available-stat b').textContent.trim() !== '62%') throw new Error('All/SUV Available percentage did not retain 62%');
+          if (screen === 'suv' && (doc.querySelector('.summary-percent').textContent.trim() !== '63%' || doc.querySelector('.available-stat'))) throw new Error('SUV serviceability did not use the corrected 30/48 calculation');
         }
         frame.contentWindow.location.hash = 'all';
         await delay(100);
@@ -503,7 +500,7 @@
         dialog.querySelector('[name="reason"]').value = '<b id="review-marker">Brake check</b>';
         dialog.querySelector('[data-action="save"]').click();
         await delay(100);
-        if (doc.querySelector('.summary-percent').textContent.trim() !== '69%' || doc.querySelector('.available-stat b').textContent.trim() !== '69%' || getComputedStyle(doc.querySelector('.summary-main')).getPropertyValue('--percentage').trim() !== '69%') throw new Error('reference-date Save left the Available percentage or Serviceability gradient frozen');
+        if (doc.querySelector('.summary-percent').textContent.trim() !== '69%' || getComputedStyle(doc.querySelector('.summary-main')).getPropertyValue('--percentage').trim() !== '69%') throw new Error('reference-date Save left the Serviceability calculation frozen');
         const updatedReferenceRow = doc.querySelector(`tr[data-record-id="${referenceId}"]`);
         if (updatedReferenceRow.querySelector('#review-marker') || updatedReferenceRow.lastElementChild.textContent.trim() !== '<b id="review-marker">Brake check</b>') throw new Error('saved Reason was not rendered as plain text');
         const noOpUnavailable = api.vehicleRecords.find(record => record.status === 'Not Available' && record.reason === '' && record.assignment !== 'Under Maintenance');

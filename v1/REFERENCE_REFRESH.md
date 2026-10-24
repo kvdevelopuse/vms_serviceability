@@ -1,5 +1,21 @@
 # Replacement reference update
 
+Latest refinement: Fleet Overview is static overall-fleet data and no longer changes on card-body clicks. Dashboard cards have no selected state or selection border; only arrows navigate. Vehicle artwork is contained within every card to prevent overlap with the Fleet Overview heading. Fleet Status now uses the reference text `Unavailable`. Existing data and calculations remain unchanged.
+
+Latest refinement: the section heading is now `Fleet Overview`, and its internal period/date selector is removed for both Option 1 and Option 2. Option 2 retains the `option2.png` overview design; recorded chart dates and the existing dashboard-level date filter remain unchanged.
+
+Latest refinement: the complete Overall Fleet Overview now follows `esnaad_style/option2.png`, including the selected category/total subtitle, serviceability KPI and previous-day delta, green trend styling, Fleet Status donut labels and legend tiles, and colored Key Insight rows. These sections remain driven by the selected card and existing data; no dashboard values or 20–22 October records were changed.
+
+Latest refinement: Option 2 now follows `esnaad_style/option2.png`, with category-specific light tints, colored title blocks, a centered serviceability ring, separate Available and Total count tiles, and matching dark-theme tints. All existing counts, calculated percentages, filters, and 20–22 October records remain unchanged. This supersedes the count-centered Option 2 ring treatment below.
+
+Latest refinement: Option 2 now keeps serviceability percentage as plain text and centers the numeric available/total count inside the progress ring. The ring arc remains count-derived and uses the Option 2 accent. Light Mode retains the light powder-blue card background and soft-teal selected background so the ring stays clearly visible. This supersedes the percentage-centered ring description below.
+
+Latest refinement: Option 2 uses lighter powder-blue and soft-teal card surfaces in Light Mode, and lifted slate-blue/teal surfaces in Dark Mode. Detail selection/focus outlines are inset so their top edge cannot be clipped by the detail container. This supersedes the darker Option 2 palette described below.
+
+Follow-up on 24 October 2026: Available is removed as a duplicate detail summary card; Serviceability retains the available-record filter. Every percentage now follows count/total rounding, including SUV 30/48 = 63%; the earlier preserved 62% exception is retired. Circular labels use a full-circle centering layer in both renderers. Option 2 now uses solid navy, selected petrol teal, mint rings, and light text. The Fleet Overview subtitle shows only the selected category. All original 20–22 October records remain unchanged.
+
+24 October 2026: serviceability cards now offer Option 1 (the emerald/ice-blue `esnaad_style/CardColor.png` reference) and Option 2 (now refined to count-centered progress rings). The centered landing-header radios select the design for dashboard and detail Serviceability cards. Available / Total text labels are removed; numeric ratios are retained. Card selection updates the trend, status breakdown, and insights; the separate arrow navigates with a reduced-motion-aware slide. The user confirmed using only the existing 20–22 October data, through the selected date, for the trend. No historical records were generated. This supersedes the earlier static trend and card-interaction descriptions. Current checks and browser limitations are recorded in `docs/superpowers/vehicle-serviceability-verification.md`.
+
 Subsequent scrolling correction: detail pages now fill the viewport without page scrollbars. Overflow belongs to the vehicle grid, with sticky column headings and keyboard focus; the summary, filters and pagination remain outside its scroll area. Compact layouts reserve more grid space on phones and short screens. This supersedes the earlier statement that detail pages retain normal scrolling.
 
 Subsequent detail correction: all four detail summary cards now reuse the landing-page vehicle artwork, centered between Serviceability and Available / Total in both themes. This supersedes the earlier removal of detail artwork described below.

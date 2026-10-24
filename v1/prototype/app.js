@@ -36,7 +36,7 @@ const fleet = {
     ],
   },
   suv: {
-    title: 'SUV', percent: '63%', availablePercent: '62%', total: '30 / 48', available: '30',
+    title: 'SUV', percent: '63%', total: '30 / 48', available: '30',
     mission: '11', missionPercent: '23%', unavailable: '7', unavailablePercent: '15%',
     footer: 'Showing 48 suv vehicles', pages: 4,
     rows: [
@@ -340,6 +340,23 @@ function selectedOption(value, selected) {
 }
 
 function icon(name) {
+  const referenceSvgs = {
+    'overview-bars': '<svg viewBox="0 0 32 28" focusable="false"><rect x="1" y="19" width="5" height="8" rx="1"/><rect x="9" y="14" width="5" height="13" rx="1"/><rect x="17" y="8" width="5" height="19" rx="1"/><rect x="25" y="2" width="5" height="25" rx="1"/></svg>',
+    trend: '<svg viewBox="0 0 24 24" focusable="false"><path d="M3 17.5 9 11l5 3 7-8"/><circle cx="3" cy="17.5" r="1.7"/><circle cx="9" cy="11" r="1.7"/><circle cx="14" cy="14" r="1.7"/><circle cx="21" cy="6" r="1.7"/></svg>',
+    'trend-up': '<svg viewBox="0 0 24 24" focusable="false"><path d="M6.5 16.5 17.5 5.5M10.5 5.5h7v7"/></svg>',
+    'trend-down': '<svg viewBox="0 0 24 24" focusable="false"><path d="m6.5 7.5 11 11M10.5 18.5h7v-7"/></svg>',
+    'trend-flat': '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 12h14M15 8l4 4-4 4"/></svg>',
+    'detail-total': '<svg viewBox="0 0 24 24" focusable="false"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>',
+    'detail-available': '<svg viewBox="0 0 24 24" focusable="false"><path d="m5 11 2-5h10l2 5 2 2v6h-2v2h-3v-2H8v2H5v-2H3v-6l2-2Z"/><path d="M5 11h14M7 15h.01M17 15h.01"/></svg>',
+    'detail-mission': '<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>',
+    'detail-unavailable': '<svg viewBox="0 0 24 24" focusable="false"><path d="M14.5 6.5a5 5 0 0 0-6.8-4.6l3.1 3.1L8 7.8 4.9 4.7a5 5 0 0 0 6.4 6.9L19.7 20a1.6 1.6 0 0 0 2.3-2.3l-8.4-8.4a5 5 0 0 0 .9-2.8Z"/></svg>',
+    'detail-search': '<svg viewBox="0 0 24 24" focusable="false"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4.5 4.5"/></svg>',
+    'table-sedan': '<svg viewBox="0 0 32 20" focusable="false"><path d="m4 12 3-5h14l5 5 2 1v3H4v-4Z"/><path d="M9 7h8l4 5H6M10 16a2 2 0 1 1-4 0M26 16a2 2 0 1 1-4 0"/></svg>',
+    'table-suv': '<svg viewBox="0 0 32 20" focusable="false"><path d="M5 12 7 5h15l4 7 2 1v3H4v-3l1-1Z"/><path d="M9 6v6m12-6 2 6H6M10 16a2 2 0 1 1-4 0M26 16a2 2 0 1 1-4 0"/></svg>',
+    'table-people-movers': '<svg viewBox="0 0 32 20" focusable="false"><path d="M4 5h21l3 7v4H4V5Z"/><path d="M8 6v6m6-6v6m6-6v6h7M10 16a2 2 0 1 1-4 0M26 16a2 2 0 1 1-4 0"/></svg>',
+    sliders: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h6M14 7h6M4 17h10M18 17h2M10 4v6M14 14v6"/></svg>',
+  };
+  if (referenceSvgs[name]) return `<span class="icon icon-${name}${name.startsWith('trend-') ? ' trend-direction' : ''}" aria-hidden="true">${referenceSvgs[name]}</span>`;
   const symbols = {car:'▰', grid:'▦', arrow:'→', back:'❮', down:'⌄', check:'✓', wheel:'◎', wrench:'🔧', bars:'▂▅▇', pin:'♧', search:'⌕', filters:'↟', calendar:'▦', moon:'◐', sun:'◐', close:'×'};
   return `<span class="icon icon-${name}" aria-hidden="true">${symbols[name] || ''}</span>`;
 }
@@ -350,6 +367,9 @@ function screenFromHash(hash) {
 }
 
 function transition(state, action) {
+  if (action.type === 'set-design' && ['1', '2'].includes(action.option)) {
+    return {...state, designOption: action.option};
+  }
   if (action.type === 'toggle-theme') {
     return {...state, theme: state.theme === 'light' ? 'dark' : 'light'};
   }
@@ -382,12 +402,15 @@ function header(screen, state) {
   return `<header class="page-header ${dashboard ? 'dashboard-header' : 'detail-header'}">
     <div class="heading-group">${dashboard ? '' : '<a class="back-button" href="#dashboard" aria-label="Back to dashboard">' + icon('back') + '</a>'}
       <div class="heading-stack"><h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
-      ${dashboard ? unitControl('unit-filter', state.unit) : unitControl('detail-unit', state.unit, true)}</div>
+      ${dashboard ? '' : unitControl('detail-unit', state.unit, true)}</div>
     </div>
+    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2'].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
+      <label class="date date-picker dashboard-header-date" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>
+      <div class="dashboard-unit">${unitControl('unit-filter', state.unit)}</div>` : ''}
     <div class="header-tools">
       <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to ${state.theme === 'light' ? 'Dark' : 'Light'} Mode" aria-pressed="${state.theme === 'dark'}">${icon(state.theme === 'light' ? 'moon' : 'sun')}<span>${state.theme === 'light' ? 'Dark' : 'Light'} Mode</span></button>
       <div class="identity"><div class="person"><span class="avatar" aria-hidden="true">JD</span><strong>John Doe</strong>${icon('down')}</div>
-      ${dashboard ? `<label class="date date-picker" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>` : `<div class="date" data-date="${state.date}">${icon('calendar')}<span>${formatDate(state.date)}</span></div>`}</div>
+      ${dashboard ? '' : `<div class="date" data-date="${state.date}">${icon('calendar')}<span>${formatDate(state.date)}</span></div>`}</div>
     </div>
   </header>`;
 }
@@ -401,88 +424,129 @@ function vehicleArt(kind) {
 function dashboard(state) {
   const cards = Object.keys(fleet).map(key => {
     const data = displayData(state.unit, key, state.date);
-    return `<article class="category-card category-${key}" style="--serviceability:${data.percent}%">
-      <div class="category-numbers"><div><strong class="service-percent">${data.percentLabel}</strong></div><div class="category-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
+    return `<article class="category-card category-${key}" data-category="${key}" style="--serviceability:${data.percent}%">
+      <div class="category-numbers"><div>${serviceabilityValue(data.percent, state.designOption)}</div><div class="category-total">${countValue(data.available, data.total, state.designOption)}</div></div>
       ${vehicleArt(key)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
     </article>`;
   }).join('');
+  const overviewState = {...state, selectedCategory: 'all'};
   const overall = displayData(state.unit, 'all', state.date);
-  const missionEnd = overall.percent + overall.missionPercent;
+  const history = trendData(state.unit, 'all', state.date);
+  const previous = history.length > 1 ? history.at(-2).percent : overall.percent;
+  const change = overall.percent - previous;
+  const changeClass = change > 0 ? 'is-positive' : change < 0 ? 'is-negative' : 'is-neutral';
+  const insightData = Object.keys(fleet).filter(key => key !== 'all').map(key => displayData(state.unit, key, state.date)).sort((a, b) => a.percent - b.percent)[0];
+  const availableShare = overall.total ? overall.available / overall.total * 100 : 0;
+  const missionEnd = overall.total ? (overall.available + overall.mission) / overall.total * 100 : 0;
   return `<section class="category-grid" aria-label="Vehicle categories">${cards}</section>
     <section class="overview" aria-labelledby="overview-title">
-      <div class="overview-heading">${icon('bars')}<div><h2 id="overview-title">Fleet Overview</h2><p>Serviceability across all vehicle types</p></div></div>
-      <div class="overview-grid">
-        <section class="overview-panel trend-panel" aria-labelledby="trend-title"><div class="panel-heading"><h3 id="trend-title">Serviceability Trend</h3><span class="period" aria-label="Trend period: Last 30 Days">Last 30 Days ${icon('down')}</span></div>
-          ${trendChart()}
+      <div class="overview-heading">${icon(state.designOption === '2' ? 'overview-bars' : 'bars')}<div><h2 id="overview-title">Fleet Overview</h2><p role="status">${overall.title} (${overall.total} Total)</p></div></div>
+      <div class="overview-grid" id="fleet-overview-panels">
+        <section class="overview-panel trend-panel" aria-labelledby="trend-title"><div class="panel-heading"><h3 id="trend-title">${state.designOption === '2' ? icon('trend') : ''}Serviceability Trend</h3></div>
+          <div class="trend-summary"><strong class="trend-current">${overall.percent}%</strong><div><b class="trend-delta ${changeClass}">${state.designOption === '2' ? icon(change > 0 ? 'trend-up' : change < 0 ? 'trend-down' : 'trend-flat') : ''}${change > 0 ? '+' : ''}${change}%</b><span>${history.length > 1 ? `vs previous day (${previous}%)` : 'First recorded day'}</span></div></div>
+          ${trendChart(overviewState)}
         </section>
-        <section class="overview-panel status-panel" aria-labelledby="status-title"><h3 id="status-title">Vehicles by Status</h3><div class="status-breakdown"><div class="donut" style="--available:${overall.percent}%;--mission-end:${missionEnd}%" role="img" aria-label="${overall.total} total vehicles: ${overall.available} available, ${overall.mission} on mission, ${overall.unavailable} not available"><div><strong>${overall.total}</strong><span>Total Vehicles</span></div></div><dl class="status-legend">
-          <div><dt><i class="legend-dot available-dot"></i>Available</dt><dd>${overall.available}</dd><dd>${overall.percent}%</dd></div><div><dt><i class="legend-dot mission-dot"></i>On Mission</dt><dd>${overall.mission}</dd><dd>${overall.missionPercent}%</dd></div><div><dt><i class="legend-dot unavailable-dot"></i>Not Available</dt><dd>${overall.unavailable}</dd><dd>${overall.unavailablePercent}%</dd></div>
+        <section class="overview-panel status-panel" aria-labelledby="status-title"><h3 id="status-title">Fleet Status</h3><div class="status-breakdown"><div class="donut-wrap"><span class="status-share status-share-available">${overall.percent}%</span><span class="status-share status-share-mission">${overall.missionPercent}%</span><span class="status-share status-share-unavailable">${overall.unavailablePercent}%</span><div class="donut" style="--available:${availableShare}%;--mission-end:${missionEnd}%" role="img" aria-label="${overall.total} total vehicles: ${overall.available} available, ${overall.mission} on mission, ${overall.unavailable} not available"><div><strong>${overall.total}</strong><span>Total Vehicles</span></div></div></div><dl class="status-legend">
+          <div><dt><i class="legend-dot available-dot"></i>Available</dt><dd>${overall.available}</dd><dd>${overall.percent}%</dd></div><div><dt><i class="legend-dot mission-dot"></i>On Mission</dt><dd>${overall.mission}</dd><dd>${overall.missionPercent}%</dd></div><div><dt><i class="legend-dot unavailable-dot"></i>Unavailable</dt><dd>${overall.unavailable}</dd><dd>${overall.unavailablePercent}%</dd></div>
         </dl></div></section>
         <section class="overview-panel insights-panel" aria-labelledby="insights-title"><h3 id="insights-title">${icon('pin')}Key Insights</h3>
-          <div class="insight"><span class="status-icon available-icon">${icon('check')}</span><div><strong>Serviceability at ${overall.percent}%</strong><p>${overall.available} of ${overall.total} vehicles available</p></div></div>
-          <div class="insight"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${overall.mission} vehicles on mission</strong><p>${overall.missionPercent}% of total fleet</p></div></div>
-          <div class="insight"><span class="status-icon unavailable-icon">${icon('close')}</span><div><strong>${overall.unavailable} vehicles not available</strong><p>${overall.unavailablePercent}% of total fleet</p></div></div>
+          <div class="insight insight-serviceability"><span class="status-icon alert-icon">${icon('close')}</span><div><strong>${insightData.title} has the lowest serviceability</strong><p><em>${insightData.percent}%</em> (${insightData.available} of ${insightData.total} vehicles available)</p></div><span class="insight-arrow" aria-hidden="true">›</span></div>
+          <div class="insight insight-mission"><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${overall.mission} vehicles on mission</strong><p><em>${overall.missionPercent}%</em> of total fleet</p></div><span class="insight-arrow" aria-hidden="true">›</span></div>
+          <div class="insight insight-unavailable"><span class="status-icon warning-icon">!</span><div><strong>${overall.unavailable} vehicles unavailable</strong><p><em>${overall.unavailablePercent}%</em> of total fleet available</p></div><span class="insight-arrow" aria-hidden="true">›</span></div>
         </section>
       </div>
     </section>`;
 }
 
-function trendChart() {
-  // Fixed visual trace from the reference, not an invented underlying time-series dataset.
-  return `<svg class="trend-chart" viewBox="0 0 640 242" role="img" aria-label="Illustrated serviceability trend from 01-Oct-2026 to 22-Oct-2026, ending at 70%">
-    <defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#168bff" stop-opacity=".35"/><stop offset="1" stop-color="#168bff" stop-opacity=".06"/></linearGradient></defs>
+function serviceabilityValue(value, designOption = '1') {
+  const percent = Math.max(0, Math.min(100, Number(value) || 0));
+  if (designOption === '2') {
+    return `<span class="service-ring${percent < 70 ? ' is-alert' : ''}" style="--ring-value:${percent}%" role="img" aria-label="${percent}% serviceable"><span class="service-ring-content"><strong>${percent}%</strong></span></span>`;
+  }
+  return `<strong class="service-percent">${percent}%</strong>`;
+}
+
+function countValue(available, total, designOption) {
+  const label = `${available} / ${total}`;
+  return designOption === '2'
+    ? `<span class="option2-stat option2-stat-available"><span class="option2-stat-icon">${icon('car')}</span><span><strong>${available}</strong><small>Available</small></span></span><span class="option2-stat option2-stat-total"><span class="option2-stat-icon">${icon('grid')}</span><span><strong>${total}</strong><small>Total</small></span></span>`
+    : `<strong>${label}</strong>`;
+}
+
+function trendData(unit, category, date) {
+  return supportedDates.filter(day => day <= date).map(day => ({date: day, percent: aggregateFor(unit, category, day).percent}));
+}
+
+function trendChart(state) {
+  const points = trendData(state.unit, state.selectedCategory, state.date);
+  const coordinates = points.map((point, index) => ({...point, x: points.length === 1 ? 347 : 80 + index * 534 / (points.length - 1), y: 204 - point.percent * 1.8}));
+  const last = coordinates.at(-1);
+  const line = coordinates.map(point => `${point.x} ${point.y}`).join(' ');
+  return `<svg class="trend-chart" viewBox="0 0 640 242" role="img" aria-label="${fleet[state.selectedCategory].title} serviceability trend for ${escapeHtml(state.unit)} from ${formatDate(points[0].date)} to ${formatDate(last.date)}, ending at ${last.percent}%">
+    <defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08a875" stop-opacity=".28"/><stop offset="1" stop-color="#08a875" stop-opacity=".04"/></linearGradient></defs>
     <g class="chart-grid"><path d="M80 24H615M80 69H615M80 114H615M80 159H615M80 204H615M80 24V204M200 24V204M320 24V204M440 24V204M560 24V204"/></g>
-    <g class="chart-labels"><text x="59" y="30" text-anchor="end">100%</text><text x="59" y="75" text-anchor="end">75%</text><text x="59" y="120" text-anchor="end">50%</text><text x="59" y="165" text-anchor="end">25%</text><text x="59" y="210" text-anchor="end">0%</text><text x="80" y="237" text-anchor="middle">01-Oct-2026</text><text x="200" y="237" text-anchor="middle">07-Oct-2026</text><text x="320" y="237" text-anchor="middle">13-Oct-2026</text><text x="440" y="237" text-anchor="middle">19-Oct-2026</text><text x="594" y="237" text-anchor="middle">22-Oct-2026</text></g>
-    <path d="M80 139 145 125 212 120 280 99 347 114 414 102 481 105 548 83 614 80V204H80Z" fill="url(#trend-fill)"/>
-    <path d="M80 139 145 125 212 120 280 99 347 114 414 102 481 105 548 83 614 80" fill="none" stroke="#0787ff" stroke-width="4" stroke-linejoin="round"/>
-    <g fill="#0787ff" stroke="var(--surface)" stroke-width="2"><circle cx="80" cy="139" r="6"/><circle cx="145" cy="125" r="6"/><circle cx="212" cy="120" r="6"/><circle cx="280" cy="99" r="6"/><circle cx="347" cy="114" r="6"/><circle cx="414" cy="102" r="6"/><circle cx="481" cy="105" r="6"/><circle cx="548" cy="83" r="6"/><circle cx="614" cy="80" r="7"/></g>
-    <rect x="580" y="25" width="55" height="32" rx="6" fill="#0787ff"/><text x="607" y="48" text-anchor="middle" fill="white" font-size="24" font-weight="700">70%</text>
+    <g class="chart-labels"><text x="59" y="30" text-anchor="end">100%</text><text x="59" y="75" text-anchor="end">75%</text><text x="59" y="120" text-anchor="end">50%</text><text x="59" y="165" text-anchor="end">25%</text><text x="59" y="210" text-anchor="end">0%</text>${coordinates.map(point => `<text x="${point.x}" y="237" text-anchor="${point.x > 600 ? 'end' : 'middle'}">${formatDate(point.date)}</text>`).join('')}</g>
+    ${points.length > 1 ? `<path d="M${line}V204H80Z" fill="url(#trend-fill)"/><path d="M${line}" fill="none" stroke="#08a875" stroke-width="4" stroke-linejoin="round"/>` : ''}
+    <g fill="#08a875" stroke="var(--surface)" stroke-width="2">${coordinates.map(point => `<circle cx="${point.x}" cy="${point.y}" r="7"><title>${formatDate(point.date)}: ${point.percent}%</title></circle>`).join('')}</g>
+    <g class="chart-point-labels">${coordinates.slice(0, -1).map(point => `<text x="${point.x}" y="${point.y - 14}" text-anchor="middle">${point.percent}%</text>`).join('')}</g>
+    <rect x="580" y="2" width="55" height="32" rx="6" fill="#08a875"/><text x="607" y="25" text-anchor="middle" fill="white" font-size="24" font-weight="700">${last.percent}%</text>
   </svg>`;
 }
 
 function summary(screen, state) {
   const data = displayData(state.unit, screen, state.date);
-  const baseline = fleet[screen];
-  const unchangedReference = state.unit === 'All' && state.date === REFERENCE_DATE && data.available === Number(baseline.available) && data.mission === Number(baseline.mission) && data.unavailable === Number(baseline.unavailable);
-  const availablePercent = unchangedReference ? (baseline.availablePercent || baseline.percent) : data.percentLabel;
+  const option2 = state.designOption === '2';
+  const primaryFilter = option2 ? 'all' : 'serviceability';
   const filterClass = filter => `summary-filter${state.statusFilter === filter ? ' active' : ''}`;
   const filterAttributes = filter => `data-summary-filter="${filter}" role="button" tabindex="0" aria-pressed="${state.statusFilter === filter}"`;
-  return `<section class="summary-grid" aria-label="${data.title} serviceability summary">
-    <div class="summary-main percentage-card ${filterClass('serviceability')}" ${filterAttributes('serviceability')} style="${percentageStyle(data.percent)}"><div class="summary-percent"><strong>${data.percentLabel}</strong></div>
+  const total = option2
+    ? `<span class="option2-stat option2-stat-total"><span class="option2-stat-icon">${icon('detail-total')}</span><span><strong>${data.total}</strong></span></span>`
+    : countValue(data.available, data.total, state.designOption);
+  const available = option2 ? `<div class="summary-stat available-stat ${filterClass('available')}" ${filterAttributes('available')}><span class="status-icon available-icon">${icon('detail-available')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.percent}%</b></div>` : '';
+  return `<section class="summary-grid${option2 ? ' option2-detail-summary' : ''}" aria-label="${data.title} serviceability summary">
+    <div class="summary-main percentage-card ${filterClass(primaryFilter)}" ${filterAttributes(primaryFilter)} style="${percentageStyle(data.percent)}"><div class="summary-percent">${serviceabilityValue(data.percent, state.designOption)}</div>
     ${vehicleArt(screen)}
-    <div class="summary-total"><strong>${data.totalLabel}</strong><span>Available / Total</span></div></div>
-    <div class="summary-stat available-stat ${filterClass('available')}" ${filterAttributes('available')}><span class="status-icon available-icon">${icon('check')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${availablePercent}</b></div>
-    <div class="summary-stat mission-stat ${filterClass('mission')}" ${filterAttributes('mission')}><span class="status-icon mission-icon">${icon('wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
-    <div class="summary-stat unavailable-stat ${filterClass('unavailable')}" ${filterAttributes('unavailable')}><span class="status-icon unavailable-icon">${icon('wrench')}</span><div><strong>${data.unavailable}</strong><span>Not Available</span></div><b>${data.unavailablePercent}%</b></div>
+    <div class="summary-total">${total}</div></div>
+    ${available}
+    <div class="summary-stat mission-stat ${filterClass('mission')}" ${filterAttributes('mission')}><span class="status-icon mission-icon">${icon(option2 ? 'detail-mission' : 'wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
+    <div class="summary-stat unavailable-stat ${filterClass('unavailable')}" ${filterAttributes('unavailable')}><span class="status-icon unavailable-icon">${icon(option2 ? 'detail-unavailable' : 'wrench')}</span><div><strong>${data.unavailable}</strong><span>${option2 ? 'Unavailable' : 'Not Available'}</span></div><b>${data.unavailablePercent}%</b></div>
   </section>`;
 }
 
-function toolbar() {
+function toolbar(state) {
+  const option2 = state.designOption === '2';
   return `<div class="table-toolbar" aria-label="Filter controls shown in reference; presentation only">
-    <div class="static-field search-field"><span>Search by plate number, model or VIN...</span>${icon('search')}</div>
-    <div class="static-field status-field"><span>All Status</span>${icon('down')}</div>
-    <span class="static-field filter-field">${icon('filters')}</span>
+    <div class="static-field search-field">${option2 ? icon('detail-search') : ''}<span>Search by plate number, model or VIN...</span>${option2 ? '' : icon('search')}</div>
+    ${option2 ? '' : `<div class="static-field status-field"><span>All Status</span>${icon('down')}</div>`}
+    <span class="static-field filter-field">${icon(option2 ? 'sliders' : 'filters')}</span>
   </div>`;
 }
 
 function vehicleTable(screen, state) {
   const filterStatus = {serviceability: 'Available', available: 'Available', mission: 'On Mission', unavailable: 'Not Available'}[state.statusFilter];
-  const matchingRecords = recordsFor(state.unit, screen, state.date).filter(record => !filterStatus || record.status === filterStatus);
+  const records = recordsFor(state.unit, screen, state.date);
+  if (state.designOption === '2' && screen === 'all') records.sort((left, right) => statusNames.indexOf(left.status) - statusNames.indexOf(right.status));
+  const matchingRecords = records.filter(record => !filterStatus || record.status === filterStatus);
+  const showStatus = state.designOption !== '2' || screen === 'all';
+  const showAssignment = state.designOption !== '2' || state.statusFilter === 'all' || state.statusFilter === 'mission';
   const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
   const page = Math.min(state.page, pages);
   const offset = (page - 1) * 10;
   const pageRecords = matchingRecords.slice(offset, offset + 10);
   const rows = pageRecords.map((record, index) => {
     const statusClass = record.status === 'Available' ? 'available' : record.status === 'On Mission' ? 'mission' : 'unavailable';
-    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${offset + index + 1}</td>${screen === 'all' ? '<td>' + record.type + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td><td><span class="status-badge ${statusClass}"><i></i>${record.status}</span></td><td>${formatDate(state.date)} ${record.time}</td><td>${escapeHtml(record.assignment)}</td></tr>`;
+    const statusLabel = state.designOption === '2' && record.status === 'Not Available' ? 'Unavailable' : record.status;
+    const typeCell = state.designOption === '2' ? `<span class="vehicle-type-cell">${icon(`table-${record.category}`)}<span>${record.type}</span></span>` : record.type;
+    const statusMark = state.designOption === '2' ? '<i aria-hidden="true">✓</i>' : '<i></i>';
+    return `<tr data-record-id="${record.id}" data-plate="${record.plate}"><td>${offset + index + 1}</td>${screen === 'all' ? '<td>' + typeCell + '</td>' : ''}<td>${record.plate}</td><td>${record.model}</td><td>${record.year}</td>${showStatus ? `<td><span class="status-badge ${statusClass}">${statusMark}${statusLabel}</span></td>` : ''}<td>${formatDate(state.date)} ${record.time}</td>${showAssignment ? `<td>${escapeHtml(record.assignment)}</td>` : ''}</tr>`;
   }).join('');
   const title = fleet[screen].title;
   const categoryLabel = screen === 'all' ? 'vehicles' : `${title.toLowerCase()} vehicles`;
   const start = matchingRecords.length ? offset + 1 : 0;
   const end = Math.min(offset + pageRecords.length, matchingRecords.length);
-  return `<div class="table-scroll" tabindex="0" role="region" aria-label="${title} vehicle grid"><table><caption class="visually-hidden">${title}: page ${page} of ${pages}</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th><th scope="col">Status</th><th scope="col">Last Updated</th><th scope="col">Current Assignment</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="table-footer"><p>Showing ${start}-${end} of ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" aria-label="Table pagination"><button type="button" class="page-arrow previous-page" data-page-action="previous"${page === 1 ? ' disabled' : ''}>${icon('back')}<span>Previous</span></button><span class="page-status" aria-live="polite">Page ${page} of ${pages}</span><button type="button" class="page-arrow next-page" data-page-action="next"${page === pages ? ' disabled' : ''}><span>Next</span>${icon('back')}</button><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
+  return `<div class="table-scroll" tabindex="0" role="region" aria-label="${title} vehicle grid"><table><caption class="visually-hidden">${title}: page ${page} of ${pages}</caption><thead><tr><th scope="col">#</th>${screen === 'all' ? '<th scope="col">Vehicle Type</th>' : ''}<th scope="col">Plate Number</th><th scope="col">Model</th><th scope="col">Year</th>${showStatus ? '<th scope="col">Status</th>' : ''}<th scope="col">Last Updated</th>${showAssignment ? '<th scope="col">Current Assignment</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-footer"><p>Showing ${start}${state.designOption === '2' ? ' – ' : '-'}${end} of ${matchingRecords.length} ${categoryLabel}</p><div class="pagination" aria-label="Table pagination"><button type="button" class="page-arrow previous-page" data-page-action="previous"${page === 1 ? ' disabled' : ''}>${icon('back')}<span>Previous</span></button><span class="page-status" aria-live="polite">Page ${page} of ${pages}</span><button type="button" class="page-arrow next-page" data-page-action="next"${page === pages ? ' disabled' : ''}><span>Next</span>${icon('back')}</button><span class="page-size">10 / page ${icon('down')}</span></div></div>`;
 }
 
 function recordDialog(state) {
@@ -509,8 +573,8 @@ function recordDialog(state) {
 
 function renderScreen(state) {
   const screen = Object.hasOwn(fleet, state.screen) ? state.screen : 'dashboard';
-  const viewState = {unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, ...state};
-  return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(viewState) : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar() + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
+  const viewState = {unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, selectedCategory: 'all', designOption: '1', ...state};
+  return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(viewState) : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar(viewState) + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
 }
 
 function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeight) {
@@ -518,13 +582,13 @@ function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle};
+  module.exports = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle, trendData};
 }
 
 if (typeof document !== 'undefined') {
   reloadSavedRecords(window.localStorage);
-  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle};
-  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1};
+  window.prototypeApi = {transition, renderScreen, screenFromHash, dashboardScale, vehicleRecords, recordsByDate, supportedDates, STORAGE_KEY, aggregateFor, recordsFor, saveRecord, getSavedRecord, reloadSavedRecords, formatDate, percentageStyle, trendData};
+  let state = {screen: screenFromHash(location.hash), theme: 'light', unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, selectedCategory: 'all', designOption: '1'};
   const app = document.getElementById('app');
   function fitDashboard() {
     if (state.screen === 'dashboard') {
@@ -537,6 +601,7 @@ if (typeof document !== 'undefined') {
   function paint(focusHeading = false) {
     document.documentElement.dataset.theme = state.theme;
     document.documentElement.dataset.screen = state.screen;
+    document.documentElement.dataset.design = state.designOption;
     document.title = `${state.screen === 'dashboard' ? 'Vehicle Serviceability' : fleet[state.screen].title} | Vehicle Serviceability Prototype`;
     app.innerHTML = renderScreen(state);
     fitDashboard();
@@ -635,7 +700,11 @@ if (typeof document !== 'undefined') {
     }
   });
   app.addEventListener('change', event => {
-    if (event.target.matches('#unit-filter')) {
+    if (event.target.matches('[name="dashboard-design"]')) {
+      state = transition(state, {type: 'set-design', option: event.target.value});
+      paint();
+      app.querySelector(`[name="dashboard-design"][value="${state.designOption}"]`).focus({preventScroll: true});
+    } else if (event.target.matches('#unit-filter')) {
       state = transition(state, {type: 'set-unit', unit: event.target.value});
       paint();
       document.getElementById('unit-filter').focus({preventScroll: true});
@@ -653,8 +722,15 @@ if (typeof document !== 'undefined') {
     }
   });
   window.addEventListener('hashchange', () => {
+    const previousScreen = state.screen;
     state = transition(state, {type: 'navigate', screen: screenFromHash(location.hash)});
     paint(true);
+    if (previousScreen !== state.screen && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      app.querySelector('main').animate([
+        {transform: `translateX(${state.screen === 'dashboard' ? '-4%' : '4%'})`, opacity: 0},
+        {transform: 'translateX(0)', opacity: 1},
+      ], {duration: 260, easing: 'ease-out'});
+    }
   });
   window.addEventListener('resize', fitDashboard);
   paint();

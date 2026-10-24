@@ -1,8 +1,20 @@
 import React from 'react';
 import './vehicle-serviceability.css';
 
-const clampPercentage = value => Math.max(0, Math.min(100, Number(value) || 0));
 const percentage = (value, total) => total ? Math.round(value / total * 100) : 0;
+
+function ServiceabilityValue({value, designOption}) {
+  return designOption === '2'
+    ? <span className={`vms-service-ring${value < 70 ? ' is-alert' : ''}`} style={{'--vms-ring-value': `${value}%`}} role="img" aria-label={`${value}% serviceable`}><span className="vms-service-ring__content"><strong>{value}%</strong></span></span>
+    : <strong>{value}%</strong>;
+}
+
+function CountValue({available, total, designOption, showTotalLabel = true}) {
+  const label = `${available} / ${total}`;
+  return designOption === '2'
+    ? <><span className="vms-option2-stat vms-option2-stat--available"><span className="vms-option2-stat__icon" aria-hidden="true">▣</span><span><strong>{available}</strong><small>Available</small></span></span><span className="vms-option2-stat vms-option2-stat--total"><span className="vms-option2-stat__icon" aria-hidden="true">▦</span><span><strong>{total}</strong>{showTotalLabel && <small>Total</small>}</span></span></>
+    : <strong>{label}</strong>;
+}
 
 export function UnitTextField({
   id,
@@ -26,30 +38,36 @@ export function UnitTextField({
 
 export function FleetCard({
   title,
-  serviceability,
   available,
   total,
   imageSrc,
   imageAlt = '',
   icon,
   onOpen,
+  onSelect,
+  selected = false,
+  designOption = '1',
   className = '',
 }) {
-  const serviceabilityValue = clampPercentage(serviceability);
+  const serviceabilityValue = percentage(available, total);
+  const category = title === 'All Vehicles' ? 'all' : title.toLowerCase().replaceAll(' ', '-');
   return (
     <article
-      className={`vms-fleet-card ${className}`.trim()}
+      className={`vms-fleet-card${selected ? ' is-selected' : ''} ${className}`.trim()}
+      data-design={designOption}
+      data-category={category}
       style={{'--vms-serviceability': `${serviceabilityValue}%`}}
     >
+      {onSelect && <button type="button" className="vms-fleet-card__select" aria-label={`Select ${title}`} aria-pressed={selected} onClick={onSelect} />}
       <div className="vms-fleet-card__numbers">
-        <strong>{serviceabilityValue}%</strong>
-        <span><b>{available} / {total}</b><small>Available / Total</small></span>
+        <ServiceabilityValue value={serviceabilityValue} designOption={designOption} />
+        <span><CountValue available={available} total={total} designOption={designOption} /></span>
       </div>
       {imageSrc && <img className="vms-fleet-card__image" src={imageSrc} alt={imageAlt} />}
       <div className="vms-fleet-card__footer">
         {icon && <span aria-hidden="true">{icon}</span>}
         <h2>{title}</h2>
-        <button type="button" onClick={onOpen} aria-label={`Open ${title} details`}>→</button>
+        <button type="button" onClick={event => {event.stopPropagation(); onOpen?.(event);}} aria-label={`Open ${title} details`}>→</button>
       </div>
     </article>
   );
@@ -73,26 +91,23 @@ function SummaryActionCard({filter, activeFilter, label, value, valuePercent, to
 
 export function DetailSummaryCards({
   title,
-  serviceability,
   available,
-  availablePercentage,
   total,
   onMission,
-  onMissionPercentage,
   notAvailable,
-  notAvailablePercentage,
   imageSrc,
   imageAlt = '',
   activeFilter = 'all',
   onFilter,
   icons = {},
+  designOption = '1',
 }) {
-  const serviceabilityValue = serviceability == null ? percentage(available, total) : clampPercentage(serviceability);
-  const availablePercentageValue = availablePercentage == null ? percentage(available, total) : clampPercentage(availablePercentage);
-  const missionPercentageValue = onMissionPercentage == null ? percentage(onMission, total) : clampPercentage(onMissionPercentage);
-  const unavailablePercentageValue = notAvailablePercentage == null ? percentage(notAvailable, total) : clampPercentage(notAvailablePercentage);
+  const serviceabilityValue = percentage(available, total);
+  const missionPercentageValue = percentage(onMission, total);
+  const unavailablePercentageValue = percentage(notAvailable, total);
+  const category = title === 'All Vehicles' ? 'all' : title.toLowerCase().replaceAll(' ', '-');
   return (
-    <section className="vms-detail-summary" aria-label={`${title} serviceability summary`}>
+    <section className="vms-detail-summary" data-design={designOption} data-category={category} aria-label={`${title} serviceability summary`}>
       <button
         type="button"
         className={`vms-serviceability-card${activeFilter === 'serviceability' ? ' is-active' : ''}`}
@@ -100,13 +115,12 @@ export function DetailSummaryCards({
         aria-pressed={activeFilter === 'serviceability'}
         onClick={() => onFilter?.('serviceability')}
       >
-        <span className="vms-serviceability-card__percentage"><strong>{serviceabilityValue}%</strong></span>
+        <span className="vms-serviceability-card__percentage"><ServiceabilityValue value={serviceabilityValue} designOption={designOption} /></span>
         {imageSrc && <img src={imageSrc} alt={imageAlt} />}
-        <span className="vms-serviceability-card__total"><strong>{available} / {total}</strong><small>Available / Total</small></span>
+        <span className="vms-serviceability-card__total"><CountValue available={available} total={total} designOption={designOption} showTotalLabel={designOption !== '2'} /></span>
       </button>
-      <SummaryActionCard filter="available" activeFilter={activeFilter} label="Available" value={available} valuePercent={availablePercentageValue} tone="available" icon={icons.available} onFilter={onFilter} />
       <SummaryActionCard filter="mission" activeFilter={activeFilter} label="On Mission" value={onMission} valuePercent={missionPercentageValue} tone="mission" icon={icons.mission} onFilter={onFilter} />
-      <SummaryActionCard filter="unavailable" activeFilter={activeFilter} label="Not Available" value={notAvailable} valuePercent={unavailablePercentageValue} tone="unavailable" icon={icons.unavailable} onFilter={onFilter} />
+      <SummaryActionCard filter="unavailable" activeFilter={activeFilter} label={designOption === '2' ? 'Unavailable' : 'Not Available'} value={notAvailable} valuePercent={unavailablePercentageValue} tone="unavailable" icon={icons.unavailable} onFilter={onFilter} />
     </section>
   );
 }
