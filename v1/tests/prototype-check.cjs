@@ -68,8 +68,8 @@ assert.equal(state.statusFilter, 'mission');
 assert.equal(transition(state, {type: 'set-date', date: '2026-10-20'}).page, 1, 'date change resets pagination');
 
 const dashboard = renderScreen({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null});
-assert.equal((dashboard.match(/name="dashboard-design"/g) || []).length, 2);
-assert.doesNotMatch(dashboard, /name="dashboard-design" value="3"|Option 3/);
+assert.equal((dashboard.match(/name="dashboard-design"/g) || []).length, 3);
+assert.doesNotMatch(dashboard, /name="dashboard-design" value="4"|Option 4/);
 assert.match(dashboard, /id="unit-filter"/);
 assert.match(dashboard, /class="date-display">22-Oct-2026/);
 assert.match(dashboard, /id="dashboard-date" type="date" min="2026-10-20" max="2026-10-22" value="2026-10-22"/);
@@ -93,7 +93,7 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.equal((html.match(/data-summary-filter=/g) || []).length, 4);
   assert.doesNotMatch(html, />Actions</);
   assert.equal((html.match(/<tr data-record-id=/g) || []).length, Math.min(10, recordsFor('Unit C', screen, '2026-10-21').length));
-  assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 6);
+  assert.equal((html.match(/<th scope="col">/g) || []).length, screen === 'all' ? 8 : 7);
   if (screen === 'suv') {
     const reference = renderScreen({screen, theme: 'light', unit: 'All', date: '2026-10-22'});
     assert.match(reference, /class="summary-main percentage-card option1-fill[^"]*"[\s\S]*?class="service-percent">63%<\/strong>/);

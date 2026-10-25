@@ -237,8 +237,8 @@ for (const theme of ['light', 'dark']) {
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.mission-stat')).backgroundColor, 'rgb(255, 249, 238)');
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.unavailable-stat')).backgroundColor, 'rgb(254, 240, 241)');
       }
-      for (const designOption of ['1','2','3']) {
-        const option2Design = designOption !== '3';
+      for (const designOption of ['1','2','3','4']) {
+        const option2Design = designOption !== '4';
         fixture.window.document.documentElement.dataset.design=designOption;
         const statusFilters = option2Design ? ['all','available','mission','unavailable'] : ['serviceability','mission','unavailable'];
         for (const statusFilter of statusFilters) {
@@ -296,7 +296,7 @@ const navigate = async selector => {
     for (const theme of ['light', 'dark']) {
       if (doc.documentElement.dataset.theme !== theme) click('#theme-toggle');
       for (const option of ['1', '2']) {
-        const option2Design = option !== '3';
+        const option2Design = option !== '4';
         const option1Fill = option === '1';
         change('[name="dashboard-design"][value="' + option + '"]', option);
         assert.equal(doc.documentElement.dataset.design, option);
@@ -359,7 +359,7 @@ const navigate = async selector => {
     change('#unit-filter', 'All');
     change('#dashboard-date', '2026-10-22');
     for (const option of ['1', '2']) {
-      const option2Design = option !== '3';
+      const option2Design = option !== '4';
       change(`[name="dashboard-design"][value="${option}"]`, option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await navigate(`.category-${category} .round-arrow`);
@@ -369,7 +369,7 @@ const navigate = async selector => {
         assert.equal(doc.querySelectorAll('.service-ring').length, option === '2' ? 1 : 0);
         assert.equal(query('.summary-main').dataset.summaryFilter, option2Design ? 'all' : 'serviceability');
         assert.equal(doc.querySelectorAll('.status-field').length, option2Design ? 0 : 1);
-        assert.equal(doc.querySelectorAll('.status-badge i').length, option2Design && category !== 'all' ? 0 : doc.querySelectorAll('tbody tr').length);
+        assert.equal(doc.querySelectorAll('.status-badge i').length, doc.querySelectorAll('tbody tr').length);
         assert.equal([...doc.querySelectorAll('.status-badge i')].every(mark => mark.textContent === (option2Design ? '✓' : '')), true);
         assert.equal(doc.querySelectorAll('.vehicle-type-cell').length, option2Design && category === 'all' ? doc.querySelectorAll('tbody tr').length : 0);
         assert.doesNotMatch(query('.summary-grid').textContent, /Available\s*\/\s*Total/);

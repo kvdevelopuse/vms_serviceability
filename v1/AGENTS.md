@@ -10,5 +10,9 @@ When the user says **"push changes to my repo"**:
 
 ## Dashboard design visibility
 
-Option 3 remains fully implemented but is currently hidden by `SHOW_OPTION_3 = false` in `prototype/app.js`.
-When the user says **"show Option 3"**, change this flag to `true`, verify the dashboard, and leave the Option 3 design unchanged.
+Options 1, 2, and 3 are visible in the dashboard header. Option 3 is based on Option 2, with the approved white-card design applied to All Vehicles, Sedan, SUV, and People Movers. Landing-page cards use two side-by-side white Available/Total tiles, thin gray borders, and colored numbers/icons. All detail-page summary cards also use white backgrounds with colored numbers/icons. These white surfaces apply in both themes; Options 1 and 2 retain their existing designs.
+
+The former Option 3 design is preserved as Option 4 and is currently hidden by `SHOW_OPTION_4 = false` in `prototype/app.js`.
+
+Option 3 detail summary cards use the same light gray selection border for every status, with no status-colored selection borders. In Options 1, 2, and 3, Sedan, SUV, and People Movers detail tables show Status immediately before Last Updated when the All summary card is selected.
+When the user says **"show Option 4"**, change this flag to `true`, verify the dashboard, and leave the Option 4 design unchanged.

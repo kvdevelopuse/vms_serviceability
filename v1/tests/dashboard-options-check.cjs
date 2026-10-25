@@ -21,7 +21,7 @@ const circular = transition(selected, {type: 'set-design', option: '2'});
 assert.equal(circular.designOption, '2');
 const option3 = transition(selected, {type: 'set-design', option: '3'});
 assert.equal(option3.designOption, '3');
-assert.deepEqual(transition(base, {type: 'set-design', option: '4'}), base);
+assert.deepEqual(transition(base, {type: 'set-design', option: '5'}), base);
 for (const designState of [circular, option3]) {
   for (const action of [{type: 'navigate', screen: 'sedan'}, {type: 'set-unit', unit: 'Unit C'}, {type: 'set-date', date: '2026-10-20'}, {type: 'set-filter', filter: 'mission'}, {type: 'toggle-theme'}]) {
     const result = transition(designState, action);
@@ -38,8 +38,8 @@ assert.deepEqual(trendData('All', 'all', '2026-10-20'), [{date: '2026-10-20', pe
 assert.deepEqual(Object.keys(recordsByDate), ['2026-10-20', '2026-10-21', '2026-10-22']);
 
 for (const theme of ['light', 'dark']) {
-  for (const designOption of ['1', '2', '3']) {
-    const option2Design = designOption !== '3';
+  for (const designOption of ['1', '2', '3', '4']) {
+    const option2Design = designOption !== '4';
     const option1Fill = designOption === '1';
     const html = renderScreen({...selected, theme, designOption});
     assert.doesNotMatch(html, /Available\s*\/\s*Total/, 'remove labels, retain numeric ratios');
@@ -49,7 +49,8 @@ for (const theme of ['light', 'dark']) {
     }
     assert.match(html, /name="dashboard-design" value="1"/);
     assert.match(html, /name="dashboard-design" value="2"/);
-    assert.doesNotMatch(html, /name="dashboard-design" value="3"|Option 3/);
+    assert.match(html, /name="dashboard-design" value="3"/);
+    assert.doesNotMatch(html, /name="dashboard-design" value="4"|Option 4/);
     assert.doesNotMatch(html, /card-select|data-select-category|is-selected/);
     assert.match(html, /120 total vehicles: 84 available, 24 on mission, 12 not available/);
     assert.match(html, /30 of 48 vehicles available/);
@@ -112,7 +113,7 @@ for (const theme of ['light', 'dark']) {
         assert.doesNotMatch(detail, /class="static-field status-field"/);
         assert.match(detail, /class="static-field search-field"><span class="icon icon-detail-search"[^>]*><svg/);
         assert.match(detail, /class="icon icon-sliders"[^>]*><svg/);
-        assert.equal((detail.match(/<i aria-hidden="true">✓<\/i>/g) || []).length, screen === 'all' ? 10 : 0);
+        assert.equal((detail.match(/<i aria-hidden="true">✓<\/i>/g) || []).length, 10);
         assert.equal((detail.match(/class="vehicle-type-cell"/g) || []).length, screen === 'all' ? 10 : 0);
         if (screen === 'all') {
           assert.match(detail, /class="icon icon-table-sedan"[^>]*><svg/);
@@ -177,8 +178,8 @@ assert.match(allReferenceDetail, /<span>Next<\/span>/);
 assert.match(allReferenceDetail, /<span class="page-size">10 \/ page /);
 
 const sedanReferenceDetail = renderScreen({...base, screen: 'sedan', designOption: '2'});
-assert.doesNotMatch(sedanReferenceDetail, /<th scope="col">Status<\/th>|class="status-badge /);
-const sedanOption3Detail = renderScreen({...base, screen: 'sedan', designOption: '3'});
+assert.match(sedanReferenceDetail, /<th scope="col">Status<\/th><th scope="col">Last Updated<\/th>/);
+const sedanOption3Detail = renderScreen({...base, screen: 'sedan', designOption: '4'});
 assert.match(sedanOption3Detail, /<th scope="col">Status<\/th>/);
 assert.match(sedanOption3Detail, /<span>Not Available<\/span>/);
 
@@ -193,7 +194,7 @@ for (const statusFilter of ['all', 'available', 'mission', 'unavailable']) {
   assert.equal(/<th scope="col">Current Assignment<\/th>/.test(detail), statusFilter === 'all' || statusFilter === 'mission');
 }
 assert.doesNotMatch(renderScreen({...base, screen: 'all', designOption: '1', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
-assert.match(renderScreen({...base, screen: 'all', designOption: '3', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
+assert.match(renderScreen({...base, screen: 'all', designOption: '4', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
 
 const suvReferenceOverview = renderScreen({...base, selectedCategory: 'suv', designOption: '2'});
 assert.match(suvReferenceOverview, /<p role="status">All Vehicles \(120 Total\)<\/p>/);
@@ -211,3 +212,24 @@ assert.match(renderScreen({...base, selectedCategory: 'suv'}), /120 total vehicl
 assert.equal(JSON.stringify(recordsByDate), original);
 reloadSavedRecords(null);
 console.log('PASS: card/design selection; real dated trends; category panels; both designs/themes; numeric ratios; saved overlays.');
+
+for (const theme of ['light', 'dark']) for (const screen of ['dashboard', 'all', 'sedan', 'suv', 'people-movers']) {
+  let option3 = renderScreen({...base, theme, screen, designOption: '3'});
+  const option2 = renderScreen({...base, theme, screen, designOption: '2'});
+  if (['sedan', 'suv', 'people-movers'].includes(screen)) {
+    assert.match(option3, /<th scope="col">Status<\/th><th scope="col">Last Updated<\/th>/);
+    assert.equal((option3.match(/class="status-badge /g) || []).length, 10);
+    for (const statusFilter of ['available', 'mission', 'unavailable']) {
+      assert.doesNotMatch(renderScreen({...base, theme, screen, designOption: '3', statusFilter}), /<th scope="col">Status<\/th>/);
+    }
+  }
+  const normalize = html => html.replace(/(name="dashboard-design" value="[23]") checked/g, '$1');
+  assert.equal(normalize(option3), normalize(option2), 'Options 2 and 3 share table behavior: ' + screen + '/' + theme);
+}
+
+for (const designOption of ['1', '2', '3']) for (const theme of ['light', 'dark']) for (const screen of ['sedan', 'suv', 'people-movers']) {
+  const detail = renderScreen({...base, designOption, theme, screen, statusFilter: 'all'});
+  assert.match(detail, /<th scope="col">Status<\/th><th scope="col">Last Updated<\/th>/);
+  assert.equal((detail.match(/class="status-badge /g) || []).length, 10);
+  for (const statusFilter of ['available', 'mission', 'unavailable']) assert.doesNotMatch(renderScreen({...base, designOption, theme, screen, statusFilter}), /<th scope="col">Status<\/th>/);
+}

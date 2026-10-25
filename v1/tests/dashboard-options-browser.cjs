@@ -40,8 +40,8 @@ const server = http.createServer((request, response) => {
     }
     if (process.argv.includes('--legacy-only')) return;
     await page.goto(`${origin}/prototype/index.html`);
-    assert.equal(await page.locator('[name="dashboard-design"]').count(), 2);
-    assert.equal(await page.locator('[name="dashboard-design"][value="3"]').count(), 0);
+    assert.equal(await page.locator('[name="dashboard-design"]').count(), 3);
+    assert.equal(await page.locator('[name="dashboard-design"][value="4"]').count(), 0);
     const card = category => page.locator(`.category-${category}`);
     const arrow = category => page.locator(`.category-${category} .round-arrow`);
     const assertRingCenters = async () => {
@@ -71,8 +71,8 @@ const server = http.createServer((request, response) => {
     };
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
-      for (const option of ['1', '2']) {
-        const option2Design = option !== '3';
+      for (const option of ['1', '2', '3']) {
+        const option2Design = option !== '4';
         const option1Fill = option === '1';
         await design(option);
         for (const category of ['all','sedan','suv','people-movers']) {
@@ -135,7 +135,7 @@ const server = http.createServer((request, response) => {
       await page.locator('#theme-toggle').focus();
       assert.equal(await page.locator('#theme-toggle').evaluate(node => getComputedStyle(node).outlineColor), 'rgb(0, 183, 255)');
       const percents = {all:70, sedan:75, suv:63, 'people-movers':75};
-      for (const option of ['1', '2']) {
+      for (const option of ['1', '2', '3']) {
         await design(option);
         const pageFits = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight);
         assert.equal(pageFits, true, `dark Option ${option} landing must fit 1920x1080`);
@@ -225,7 +225,7 @@ const server = http.createServer((request, response) => {
       if (await page.locator('html').getAttribute('data-theme') !== 'light') await page.locator('#theme-toggle').click();
       const serviceabilityBorders = {all:'rgb(17, 140, 240)', sedan:'rgb(255, 150, 0)', suv:'rgb(123, 69, 245)', 'people-movers':'rgb(8, 166, 115)'};
       const statusBorders = {available:'rgb(8, 168, 117)', mission:'rgb(240, 145, 0)', unavailable:'rgb(223, 21, 45)'};
-      for (const option of ['1', '2']) {
+      for (const option of ['1', '2', '3']) {
         await design(option);
         for (const category of Object.keys(serviceabilityBorders)) {
           await arrow(category).click();
@@ -284,8 +284,8 @@ const server = http.createServer((request, response) => {
 
     await page.locator('#unit-filter').selectOption('All');
     await page.locator('#dashboard-date').fill('2026-10-22');
-    for (const option of ['1', '2']) {
-      const option2Design = option !== '3';
+    for (const option of ['1', '2', '3']) {
+      const option2Design = option !== '4';
       await design(option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await arrow(category).click();
@@ -325,7 +325,7 @@ const server = http.createServer((request, response) => {
     if (await page.locator('html').getAttribute('data-theme') !== 'light') await page.locator('#theme-toggle').click();
     for (const [width, height] of [[1920,1080], [1366,768], [800,900], [390,844], [320,740]]) {
       await page.setViewportSize({width, height});
-      for (const option of ['1', '2']) {
+      for (const option of ['1', '2', '3']) {
         await design(option);
         const geometry = await page.evaluate(() => {
           const box = selector => {const b = document.querySelector(selector).getBoundingClientRect(); return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,x:(b.left+b.right)/2,y:(b.top+b.bottom)/2};};

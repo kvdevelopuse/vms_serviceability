@@ -385,13 +385,13 @@ function screenFromHash(hash) {
 }
 
 function usesOption2Design(designOption) {
-  return designOption === '1' || designOption === '2';
+  return ['1', '2', '3'].includes(designOption);
 }
 
-const SHOW_OPTION_3 = false;
+const SHOW_OPTION_4 = false;
 
 function transition(state, action) {
-  if (action.type === 'set-design' && ['1', '2', '3'].includes(action.option)) {
+  if (action.type === 'set-design' && ['1', '2', '3', '4'].includes(action.option)) {
     return {...state, designOption: action.option};
   }
   if (action.type === 'toggle-theme') {
@@ -428,7 +428,7 @@ function header(screen, state) {
       <div class="heading-stack"><h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
       ${dashboard ? '' : unitControl('detail-unit', state.unit, true)}</div>
     </div>
-    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', ...(SHOW_OPTION_3 ? ['3'] : [])].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
+    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', '3', ...(SHOW_OPTION_4 ? ['4'] : [])].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
       <label class="date date-picker dashboard-header-date" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>
       <div class="dashboard-unit">${unitControl('unit-filter', state.unit)}</div>` : ''}
     <div class="header-tools">
@@ -440,7 +440,11 @@ function header(screen, state) {
 }
 
 // Standalone cutouts keep the whole vehicle sharp and centered in either theme.
-function vehicleArt(kind) {
+function vehicleArt(kind, designOption) {
+  if (['1', '2', '3'].includes(designOption)) {
+    const filenames = {all: 'All', 'people-movers': 'PeopleMovers', sedan: 'Sedan', suv: 'SUV'};
+    return `<span class="vehicle-art vehicle-${kind}" role="img" aria-label="${fleet[kind].title}"><img class="vehicle-icon" src="assets/vehicle-icons/${filenames[kind]}.png" alt="" draggable="false"></span>`;
+  }
   const vehicles = kind === 'all' ? ['people-movers', 'suv', 'sedan'] : [kind];
   return `<span class="vehicle-art vehicle-${kind}" role="img" aria-label="${kind === 'all' ? 'Fleet of vehicles' : kind === 'people-movers' ? 'People mover' : kind === 'sedan' ? 'Sedan' : 'SUV'}">${vehicles.map(vehicle => `<img class="art-${vehicle}" src="assets/vehicle-${vehicle}.png" alt="" draggable="false">`).join('')}</span>`;
 }
@@ -452,7 +456,7 @@ function dashboard(state) {
     const serviceability = option1Fill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption);
     return `<article class="category-card category-${key}${option1Fill ? ' option1-fill' : ''}" data-category="${key}" style="--serviceability:${data.percent}%">
       <div class="category-numbers"><div>${serviceability}</div><div class="category-total">${countValue(data.available, data.total, state.designOption)}</div></div>
-      ${vehicleArt(key)}
+      ${vehicleArt(key, state.designOption)}
       <div class="category-label">${icon(key === 'all' ? 'grid' : 'car')}<h2>${data.title}</h2><a class="round-arrow" href="#${key}" aria-label="Open ${data.title} details">${icon('arrow')}</a></div>
     </article>`;
   }).join('');
@@ -533,7 +537,7 @@ function summary(screen, state) {
   const available = option2 ? `<div class="summary-stat available-stat ${filterClass('available')}" ${filterAttributes('available')}><span class="status-icon available-icon">${icon('detail-available')}</span><div><strong>${data.available}</strong><span>Available</span></div><b>${data.percent}%</b></div>` : '';
   return `<section class="summary-grid${option2 ? ' option2-detail-summary' : ''}" aria-label="${data.title} serviceability summary">
     <div class="summary-main percentage-card${option1Fill ? ' option1-fill' : ''} ${filterClass(primaryFilter)}" ${filterAttributes(primaryFilter)} style="${percentageStyle(data.percent)}"><div class="summary-percent">${option1Fill ? `<strong class="service-percent">${data.percent}%</strong>` : serviceabilityValue(data.percent, state.designOption)}</div>
-    ${vehicleArt(screen)}
+    ${vehicleArt(screen, state.designOption)}
     <div class="summary-total">${total}</div></div>
     ${available}
     <div class="summary-stat mission-stat ${filterClass('mission')}" ${filterAttributes('mission')}><span class="status-icon mission-icon">${icon(option2 ? 'detail-mission' : 'wheel')}</span><div><strong>${data.mission}</strong><span>On Mission</span></div><b>${data.missionPercent}%</b></div>
@@ -556,7 +560,7 @@ function vehicleTable(screen, state) {
   const option2 = usesOption2Design(state.designOption);
   if (option2 && screen === 'all') records.sort((left, right) => statusNames.indexOf(left.status) - statusNames.indexOf(right.status));
   const matchingRecords = records.filter(record => !filterStatus || record.status === filterStatus);
-  const showStatus = !option2 || screen === 'all';
+  const showStatus = !option2 || screen === 'all' || state.statusFilter === 'all';
   const showAssignment = !option2 || state.statusFilter === 'all' || state.statusFilter === 'mission';
   const pages = Math.max(1, Math.ceil(matchingRecords.length / 10));
   const page = Math.min(state.page, pages);
