@@ -68,8 +68,9 @@ assert.equal(state.statusFilter, 'mission');
 assert.equal(transition(state, {type: 'set-date', date: '2026-10-20'}).page, 1, 'date change resets pagination');
 
 const dashboard = renderScreen({screen: 'dashboard', theme: 'light', unit: 'All', date: '2026-10-22', activeRecordId: null});
-assert.equal((dashboard.match(/name="dashboard-design"/g) || []).length, 3);
-assert.doesNotMatch(dashboard, /name="dashboard-design" value="4"|Option 4/);
+assert.equal((dashboard.match(/name="dashboard-design"/g) || []).length, 4);
+assert.match(dashboard, /name="dashboard-design" value="4"/);
+assert.doesNotMatch(dashboard, /name="dashboard-design" value="10"|Option 10/);
 assert.match(dashboard, /id="unit-filter"/);
 assert.match(dashboard, /class="date-display">22-Oct-2026/);
 assert.match(dashboard, /id="dashboard-date" type="date" min="2026-10-20" max="2026-10-22" value="2026-10-22"/);
@@ -83,6 +84,10 @@ for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   assert.ok(dashboard.includes(`<a class="round-arrow" href="#${screen}"`));
   assert.ok(!dashboard.includes(`<a href="#${screen}" class="category-card`));
 }
+
+const option4Dashboard = renderScreen({screen: 'dashboard', theme: 'dark', unit: 'All', date: '2026-10-22', designOption: '4', activeRecordId: null});
+assert.equal((option4Dashboard.match(/class="option4-vehicle-icon option4-sprite-\d+"/g) || []).length, 15);
+assert.ok(fs.existsSync(path.join(root, 'assets', 'option4', 'vehicle_icons.jpg')), 'Option 4 sprite is deployed with the prototype');
 
 for (const screen of ['all', 'sedan', 'suv', 'people-movers']) {
   const html = renderScreen({screen, theme: 'dark', unit: 'Unit C', date: '2026-10-21', activeRecordId: null});

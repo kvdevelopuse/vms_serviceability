@@ -23,6 +23,12 @@ const headerStyleFixture = new JSDOM(`<html data-theme="light" data-design="2"><
 const stylesheet = headerStyleFixture.window.document.createElement('style');
 stylesheet.textContent = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 headerStyleFixture.window.document.head.append(stylesheet);
+const option4StyleFixture = new JSDOM(`<html data-theme="dark" data-design="4"><head><style>${fs.readFileSync(path.join(root, 'styles.css'), 'utf8')}</style></head><body>${renderScreen({screen:'dashboard',theme:'dark',unit:'All',date:'2026-10-22',designOption:'4'})}</body></html>`, {virtualConsole:new VirtualConsole()});
+assert.equal(option4StyleFixture.window.getComputedStyle(option4StyleFixture.window.document.documentElement).getPropertyValue('--background').trim(), '#f7f6f3');
+assert.equal(option4StyleFixture.window.document.querySelectorAll('.option4-vehicle-row').length, 15);
+assert.equal(option4StyleFixture.window.document.querySelector('#theme-toggle'), null);
+assert.match(option4StyleFixture.window.getComputedStyle(option4StyleFixture.window.document.querySelector('.option4-vehicle-icon')).backgroundImage, /vehicle_icons\.jpg/);
+option4StyleFixture.window.close();
 const darkDashboardFixture = new JSDOM(`<html data-theme="dark" data-design="2"><body>${renderScreen({screen:'dashboard',theme:'dark',unit:'All',date:'2026-10-22',designOption:'2'})}</body></html>`, {virtualConsole:new VirtualConsole()});
 const darkDashboardStyle = darkDashboardFixture.window.document.createElement('style');
 darkDashboardStyle.textContent = stylesheet.textContent;
@@ -237,8 +243,8 @@ for (const theme of ['light', 'dark']) {
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.mission-stat')).backgroundColor, 'rgb(255, 249, 238)');
         assert.equal(fixture.window.getComputedStyle(fixture.window.document.querySelector('.unavailable-stat')).backgroundColor, 'rgb(254, 240, 241)');
       }
-      for (const designOption of ['1','2','3','4']) {
-        const option2Design = designOption !== '4';
+      for (const designOption of ['1','2','3','10']) {
+        const option2Design = designOption !== '10';
         fixture.window.document.documentElement.dataset.design=designOption;
         const statusFilters = option2Design ? ['all','available','mission','unavailable'] : ['serviceability','mission','unavailable'];
         for (const statusFilter of statusFilters) {
@@ -247,14 +253,15 @@ for (const theme of ['light', 'dark']) {
           assert.equal(activeStyle.outlineOffset, '-3px', `${screen}/${theme}/${designOption}/${statusFilter} all selection edges stay in bounds`);
           if (option2Design) {
             assert.equal(activeStyle.borderTopWidth, '2px');
-            const lightBorder = statusFilter === 'all'
-              ? {all:'rgb(17, 140, 240)', sedan:'rgb(255, 150, 0)', suv:'rgb(123, 69, 245)', 'people-movers':'rgb(8, 166, 115)'}[screen]
-              : {available:'rgb(8, 168, 117)', mission:'rgb(240, 145, 0)', unavailable:'rgb(223, 21, 45)'}[statusFilter];
-            if (statusFilter === 'all') {
+            if (designOption === '3') {
+              assert.equal(activeStyle.borderTopColor, 'rgb(184, 194, 206)');
+            } else if (statusFilter === 'all') {
               const accent = activeStyle.getPropertyValue('--option2-accent').trim() || fixture.window.getComputedStyle(fixture.window.document.documentElement).getPropertyValue('--option2-accent').trim();
               assert.equal(accent, theme === 'light' ? {all:'#118cf0', sedan:'#ff9600', suv:'#7b45f5', 'people-movers':'#08a673'}[screen] : {all:'#00B7FF', sedan:'#FFB000', suv:'#8A4DFF', 'people-movers':'#00D99B'}[screen]);
             } else {
-              assert.equal(activeStyle.borderTopColor, theme === 'light' ? lightBorder : {available:'rgb(0, 217, 155)', mission:'rgb(255, 195, 26)', unavailable:'rgb(255, 77, 100)'}[statusFilter]);
+              assert.equal(activeStyle.borderTopColor, theme === 'light'
+                ? {available:'rgb(8, 168, 117)', mission:'rgb(240, 145, 0)', unavailable:'rgb(223, 21, 45)'}[statusFilter]
+                : {available:'rgb(0, 217, 155)', mission:'rgb(255, 195, 26)', unavailable:'rgb(255, 77, 100)'}[statusFilter]);
             }
           }
         }
@@ -290,13 +297,19 @@ const navigate = async selector => {
   try {
     assert.equal(doc.querySelectorAll('.card-select, .category-card.is-selected').length, 0);
     assert.equal(doc.documentElement.dataset.design, '1');
-    assert.equal(doc.querySelectorAll('[name="dashboard-design"]').length, 2);
-    assert.equal(doc.querySelector('[name="dashboard-design"][value="3"]'), null);
+    assert.equal(doc.querySelectorAll('[name="dashboard-design"]').length, 4);
+    assert.ok(doc.querySelector('[name="dashboard-design"][value="3"]'));
+    assert.ok(doc.querySelector('[name="dashboard-design"][value="4"]'));
+    assert.equal(doc.querySelector('[name="dashboard-design"][value="10"]'), null);
+    change('[name="dashboard-design"][value="4"]', '4');
+    assert.equal(doc.querySelectorAll('.option4-vehicle-row').length, 15);
+    assert.equal(doc.querySelector('#theme-toggle'), null);
+    change('[name="dashboard-design"][value="1"]', '1');
     const immutable = JSON.stringify(window.prototypeApi.recordsByDate);
     for (const theme of ['light', 'dark']) {
       if (doc.documentElement.dataset.theme !== theme) click('#theme-toggle');
       for (const option of ['1', '2']) {
-        const option2Design = option !== '4';
+        const option2Design = option !== '10';
         const option1Fill = option === '1';
         change('[name="dashboard-design"][value="' + option + '"]', option);
         assert.equal(doc.documentElement.dataset.design, option);
@@ -359,7 +372,7 @@ const navigate = async selector => {
     change('#unit-filter', 'All');
     change('#dashboard-date', '2026-10-22');
     for (const option of ['1', '2']) {
-      const option2Design = option !== '4';
+      const option2Design = option !== '10';
       change(`[name="dashboard-design"][value="${option}"]`, option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await navigate(`.category-${category} .round-arrow`);

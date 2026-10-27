@@ -21,6 +21,10 @@ const circular = transition(selected, {type: 'set-design', option: '2'});
 assert.equal(circular.designOption, '2');
 const option3 = transition(selected, {type: 'set-design', option: '3'});
 assert.equal(option3.designOption, '3');
+const option4 = transition(selected, {type: 'set-design', option: '4'});
+assert.equal(option4.designOption, '4');
+const option10 = transition(selected, {type: 'set-design', option: '10'});
+assert.equal(option10.designOption, '10');
 assert.deepEqual(transition(base, {type: 'set-design', option: '5'}), base);
 for (const designState of [circular, option3]) {
   for (const action of [{type: 'navigate', screen: 'sedan'}, {type: 'set-unit', unit: 'Unit C'}, {type: 'set-date', date: '2026-10-20'}, {type: 'set-filter', filter: 'mission'}, {type: 'toggle-theme'}]) {
@@ -37,9 +41,35 @@ assert.deepEqual(trendData('Unit C', 'suv', '2026-10-21'), [{date: '2026-10-20',
 assert.deepEqual(trendData('All', 'all', '2026-10-20'), [{date: '2026-10-20', percent: 61}]);
 assert.deepEqual(Object.keys(recordsByDate), ['2026-10-20', '2026-10-21', '2026-10-22']);
 
+const option4Dashboard = renderScreen({...base, theme: 'dark', designOption: '4'});
+assert.match(option4Dashboard, /name="dashboard-design" value="4" checked>Option 4/);
+assert.doesNotMatch(option4Dashboard, /name="dashboard-design" value="10"|Option 10/);
+assert.doesNotMatch(option4Dashboard, /id="theme-toggle"/);
+assert.match(option4Dashboard, /class="option4-dashboard"/);
+assert.match(option4Dashboard, /All units · 1,000 vehicles · as of 27 Oct 2026/);
+assert.match(option4Dashboard, /class="date-display">27-Oct-2026/);
+assert.match(option4Dashboard, /<h2[^>]*>Light vehicles<\/h2>/);
+assert.match(option4Dashboard, /<h2[^>]*>Passenger &amp; emergency<\/h2>/);
+assert.match(option4Dashboard, /<h2[^>]*>Heavy &amp; cargo<\/h2>/);
+assert.equal((option4Dashboard.match(/class="option4-vehicle-row"/g) || []).length, 15);
+for (const type of ['SUV', 'Van', 'Sedan', 'Pickup', 'Motorcycle', 'Crew Bus', 'People Mover', 'Fire Truck', 'Minibus', 'Ambulance', 'Box Truck', 'Trailer', 'Refrigerated Truck', 'Heavy Truck', 'Tipper']) {
+  assert.match(option4Dashboard, new RegExp(`>${type}<\\/h3>`));
+}
+for (const [type, sprite] of Object.entries({SUV:1, Van:3, Sedan:0, Pickup:2, Motorcycle:13, 'Crew Bus':5, 'People Mover':4, Minibus:4, 'Box Truck':6, Tipper:11})) {
+  assert.match(option4Dashboard, new RegExp(`option4-sprite-${sprite}" role="img" aria-label="${type}"`));
+}
+assert.match(option4Dashboard, /<strong class="option4-current">75\.3%<\/strong>/);
+assert.match(option4Dashboard, /<dt>Available<\/dt><dd><strong>753<\/strong><span>75%<\/span><\/dd>/);
+assert.match(option4Dashboard, /<dt>On mission<\/dt><dd><strong>158<\/strong><span>16%<\/span><\/dd>/);
+assert.match(option4Dashboard, /<dt>Unavailable<\/dt><dd><strong>89<\/strong><span>9%<\/span><\/dd>/);
+assert.match(option4Dashboard, /249 of 330/);
+assert.match(option4Dashboard, /215 of 270/);
+assert.match(option4Dashboard, /289 of 400/);
+assert.match(renderScreen({...base, theme: 'dark', designOption: '3'}), /id="theme-toggle"/);
+
 for (const theme of ['light', 'dark']) {
-  for (const designOption of ['1', '2', '3', '4']) {
-    const option2Design = designOption !== '4';
+  for (const designOption of ['1', '2', '3', '10']) {
+    const option2Design = designOption !== '10';
     const option1Fill = designOption === '1';
     const html = renderScreen({...selected, theme, designOption});
     assert.doesNotMatch(html, /Available\s*\/\s*Total/, 'remove labels, retain numeric ratios');
@@ -50,7 +80,8 @@ for (const theme of ['light', 'dark']) {
     assert.match(html, /name="dashboard-design" value="1"/);
     assert.match(html, /name="dashboard-design" value="2"/);
     assert.match(html, /name="dashboard-design" value="3"/);
-    assert.doesNotMatch(html, /name="dashboard-design" value="4"|Option 4/);
+    assert.match(html, /name="dashboard-design" value="4"/);
+    assert.doesNotMatch(html, /name="dashboard-design" value="10"|Option 10/);
     assert.doesNotMatch(html, /card-select|data-select-category|is-selected/);
     assert.match(html, /120 total vehicles: 84 available, 24 on mission, 12 not available/);
     assert.match(html, /30 of 48 vehicles available/);
@@ -179,9 +210,9 @@ assert.match(allReferenceDetail, /<span class="page-size">10 \/ page /);
 
 const sedanReferenceDetail = renderScreen({...base, screen: 'sedan', designOption: '2'});
 assert.match(sedanReferenceDetail, /<th scope="col">Status<\/th><th scope="col">Last Updated<\/th>/);
-const sedanOption3Detail = renderScreen({...base, screen: 'sedan', designOption: '4'});
-assert.match(sedanOption3Detail, /<th scope="col">Status<\/th>/);
-assert.match(sedanOption3Detail, /<span>Not Available<\/span>/);
+const sedanOption10Detail = renderScreen({...base, screen: 'sedan', designOption: '10'});
+assert.match(sedanOption10Detail, /<th scope="col">Status<\/th>/);
+assert.match(sedanOption10Detail, /<span>Not Available<\/span>/);
 
 const visibleStatuses = html => [...html.matchAll(/class="status-badge [^"]+"><i[^>]*>[\s\S]*?<\/i>([^<]+)<\/span>/g)].map(match => match[1]);
 assert.deepEqual(visibleStatuses(renderScreen({...base, screen: 'all', designOption: '2', page: 9})), [
@@ -194,7 +225,7 @@ for (const statusFilter of ['all', 'available', 'mission', 'unavailable']) {
   assert.equal(/<th scope="col">Current Assignment<\/th>/.test(detail), statusFilter === 'all' || statusFilter === 'mission');
 }
 assert.doesNotMatch(renderScreen({...base, screen: 'all', designOption: '1', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
-assert.match(renderScreen({...base, screen: 'all', designOption: '4', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
+assert.match(renderScreen({...base, screen: 'all', designOption: '10', statusFilter: 'unavailable'}), /<th scope="col">Current Assignment<\/th>/);
 
 const suvReferenceOverview = renderScreen({...base, selectedCategory: 'suv', designOption: '2'});
 assert.match(suvReferenceOverview, /<p role="status">All Vehicles \(120 Total\)<\/p>/);

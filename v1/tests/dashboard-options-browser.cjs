@@ -12,7 +12,7 @@ const artifacts = path.join(root, '.rollback/dashboard-ui-work');
 const darkArtifacts = path.join(root, '.rollback/options-1-2-dark-mode-work');
 fs.mkdirSync(artifacts, {recursive: true});
 fs.mkdirSync(darkArtifacts, {recursive: true});
-const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jsx': 'text/plain', '.md': 'text/plain'};
+const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jsx': 'text/plain', '.md': 'text/plain'};
 const server = http.createServer((request, response) => {
   const filename = path.resolve(root, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname));
   if (!filename.startsWith(root + path.sep)) {response.writeHead(403).end(); return;}
@@ -40,8 +40,9 @@ const server = http.createServer((request, response) => {
     }
     if (process.argv.includes('--legacy-only')) return;
     await page.goto(`${origin}/prototype/index.html`);
-    assert.equal(await page.locator('[name="dashboard-design"]').count(), 3);
-    assert.equal(await page.locator('[name="dashboard-design"][value="4"]').count(), 0);
+    assert.equal(await page.locator('[name="dashboard-design"]').count(), 4);
+    assert.equal(await page.locator('[name="dashboard-design"][value="4"]').count(), 1);
+    assert.equal(await page.locator('[name="dashboard-design"][value="10"]').count(), 0);
     const card = category => page.locator(`.category-${category}`);
     const arrow = category => page.locator(`.category-${category} .round-arrow`);
     const assertRingCenters = async () => {
@@ -56,6 +57,13 @@ const server = http.createServer((request, response) => {
       await page.locator(`[name="dashboard-design"][value="${option}"]`).check();
       assert.equal(await page.locator('html').getAttribute('data-design'), option);
     };
+    await design('4');
+    assert.equal(await page.locator('.option4-vehicle-row').count(), 15);
+    assert.equal(await page.locator('#theme-toggle').count(), 0);
+    assert.equal(await page.locator('.option4-vehicle-icon').first().evaluate(node => getComputedStyle(node).backgroundImage.includes('vehicle_icons.jpg')), true);
+    assert.equal(await page.locator('body').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(247, 246, 243)');
+    await design('1');
+    assert.equal(await page.locator('#theme-toggle').count(), 1);
     const assertOverview = async () => {
       assert.equal(await page.locator('.card-select, .category-card.is-selected').count(), 0);
       assert.match(await page.locator('.donut').getAttribute('aria-label'), /120 total vehicles: 84 available, 24 on mission, 12 not available/);
@@ -72,7 +80,7 @@ const server = http.createServer((request, response) => {
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-toggle').click();
       for (const option of ['1', '2', '3']) {
-        const option2Design = option !== '4';
+        const option2Design = option !== '10';
         const option1Fill = option === '1';
         await design(option);
         for (const category of ['all','sedan','suv','people-movers']) {
@@ -285,7 +293,7 @@ const server = http.createServer((request, response) => {
     await page.locator('#unit-filter').selectOption('All');
     await page.locator('#dashboard-date').fill('2026-10-22');
     for (const option of ['1', '2', '3']) {
-      const option2Design = option !== '4';
+      const option2Design = option !== '10';
       await design(option);
       for (const category of ['all', 'sedan', 'suv', 'people-movers']) {
         await arrow(category).click();

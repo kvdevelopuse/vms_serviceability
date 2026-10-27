@@ -70,6 +70,30 @@ const fleet = {
   },
 };
 
+const option4VehicleGroups = [
+  {
+    title: 'Light vehicles', available: 249, total: 330, percent: 75.5, belowTarget: 2,
+    vehicles: [
+      ['SUV', 66, 100, 1], ['Van', 44, 60, 3], ['Sedan', 51, 65, 0],
+      ['Pickup', 56, 70, 2], ['Motorcycle', 32, 35, 13],
+    ],
+  },
+  {
+    title: 'Passenger & emergency', available: 215, total: 270, percent: 79.6, belowTarget: 1,
+    vehicles: [
+      ['Crew Bus', 44, 65, 5], ['People Mover', 62, 80, 4], ['Fire Truck', 20, 25, 7],
+      ['Minibus', 61, 70, 4], ['Ambulance', 28, 30, 3],
+    ],
+  },
+  {
+    title: 'Heavy & cargo', available: 289, total: 400, percent: 72.3, belowTarget: 4,
+    vehicles: [
+      ['Box Truck', 49, 70, 6], ['Trailer', 71, 100, 7], ['Refrigerated Truck', 47, 65, 6],
+      ['Heavy Truck', 73, 100, 7], ['Tipper', 49, 65, 11],
+    ],
+  },
+];
+
 const units = ['All', 'Unit A', 'Unit B', 'Unit C', 'Unit D'];
 const REFERENCE_DATE = '2026-10-22';
 const supportedDates = ['2026-10-20', '2026-10-21', REFERENCE_DATE];
@@ -388,10 +412,10 @@ function usesOption2Design(designOption) {
   return ['1', '2', '3'].includes(designOption);
 }
 
-const SHOW_OPTION_4 = false;
+const SHOW_OPTION_10 = false;
 
 function transition(state, action) {
-  if (action.type === 'set-design' && ['1', '2', '3', '4'].includes(action.option)) {
+  if (action.type === 'set-design' && ['1', '2', '3', '4', '10'].includes(action.option)) {
     return {...state, designOption: action.option};
   }
   if (action.type === 'toggle-theme') {
@@ -423,20 +447,55 @@ function transition(state, action) {
 
 function header(screen, state) {
   const dashboard = screen === 'dashboard';
+  const option4 = dashboard && state.designOption === '4';
   return `<header class="page-header ${dashboard ? 'dashboard-header' : 'detail-header'}">
     <div class="heading-group">${dashboard ? '' : '<a class="back-button" href="#dashboard" aria-label="Back to dashboard">' + icon('back') + '</a>'}
-      <div class="heading-stack"><h1 tabindex="-1">${dashboard ? 'Vehicle Serviceability' : fleet[screen].title}</h1>
+      <div class="heading-stack"><h1 tabindex="-1">${dashboard ? (option4 ? 'Fleet serviceability' : 'Vehicle Serviceability') : fleet[screen].title}</h1>
+      ${option4 ? '<p class="option4-subtitle">All units · 1,000 vehicles · as of 27 Oct 2026</p>' : ''}
       ${dashboard ? '' : unitControl('detail-unit', state.unit, true)}</div>
     </div>
-    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', '3', ...(SHOW_OPTION_4 ? ['4'] : [])].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
-      <label class="date date-picker dashboard-header-date" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>
+    ${dashboard ? `<fieldset class="design-options"><legend class="visually-hidden">Serviceability card design</legend>${['1', '2', '3', '4', ...(SHOW_OPTION_10 ? ['10'] : [])].map(option => `<label><input type="radio" name="dashboard-design" value="${option}"${state.designOption === option ? ' checked' : ''}>Option ${option}</label>`).join('')}</fieldset>
+      ${option4 ? `<div class="date dashboard-header-date">${icon('calendar')}<span class="date-display">27-Oct-2026</span></div>` : `<label class="date date-picker dashboard-header-date" for="dashboard-date">${icon('calendar')}<span class="date-display">${formatDate(state.date)}</span><input id="dashboard-date" type="date" min="${supportedDates[0]}" max="${REFERENCE_DATE}" value="${state.date}" aria-label="Dashboard date"></label>`}
       <div class="dashboard-unit">${unitControl('unit-filter', state.unit)}</div>` : ''}
     <div class="header-tools">
-      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to ${state.theme === 'light' ? 'Dark' : 'Light'} Mode" aria-pressed="${state.theme === 'dark'}">${icon(state.theme === 'light' ? 'moon' : 'sun')}<span>${state.theme === 'light' ? 'Dark' : 'Light'} Mode</span></button>
+      ${option4 ? '' : `<button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to ${state.theme === 'light' ? 'Dark' : 'Light'} Mode" aria-pressed="${state.theme === 'dark'}">${icon(state.theme === 'light' ? 'moon' : 'sun')}<span>${state.theme === 'light' ? 'Dark' : 'Light'} Mode</span></button>`}
       <div class="identity"><div class="person"><span class="avatar" aria-hidden="true">JD</span><strong>John Doe</strong>${icon('down')}</div>
       ${dashboard ? '' : `<div class="date" data-date="${state.date}">${icon('calendar')}<span>${formatDate(state.date)}</span></div>`}</div>
     </div>
   </header>`;
+}
+
+function option4Dashboard() {
+  const groups = option4VehicleGroups.map(group => {
+    const rows = group.vehicles.map(([name, available, total, sprite]) => {
+      const percent = Math.round(available / total * 100);
+      return `<article class="option4-vehicle-row">
+        <span class="option4-vehicle-icon option4-sprite-${sprite}" role="img" aria-label="${name}"></span>
+        <div class="option4-vehicle-data"><div><h3>${name}</h3><strong${percent < 75 ? ' class="is-below-target"' : ''}>${percent}%</strong></div>
+          <span class="option4-meter${percent < 75 ? ' is-below-target' : ''}" style="--value:${percent}%"><i></i><b aria-hidden="true"></b></span>
+          <p>${available} of ${total} available</p>
+        </div>
+      </article>`;
+    }).join('');
+    return `<section class="option4-group" aria-labelledby="option4-${group.title.toLowerCase().replace(/[^a-z]+/g, '-')}">
+      <header><h2 id="option4-${group.title.toLowerCase().replace(/[^a-z]+/g, '-')}">${group.title.replace('&', '&amp;')}</h2><strong${group.percent < 75 ? ' class="is-below-target"' : ''}>${group.percent}%</strong>
+        <p>${group.available} of ${group.total} · <span>${group.belowTarget} of 5 below target</span></p></header>${rows}
+    </section>`;
+  }).join('');
+  return `<section class="option4-dashboard" aria-label="Fleet serviceability by vehicle type">
+    <aside class="option4-summary">
+      <p class="option4-eyebrow">Serviceable now</p><strong class="option4-current">75.3%</strong>
+      <p class="option4-target"><b>Above the 75% target</b><span>+0.3 pts</span></p>
+      <div class="option4-overall-meter"><i></i><b aria-hidden="true"></b></div>
+      <div class="option4-scale"><span>0%</span><span>75%</span><span>100%</span></div>
+      <section class="option4-trend" aria-labelledby="option4-trend-title"><header><h2 id="option4-trend-title">Last 7 days</h2><span>−1.5 pts</span></header>
+        <svg viewBox="0 0 320 112" role="img" aria-label="Serviceability trend declining to 75.3 percent"><path d="M1 35 54 46 107 30 160 41 213 57 266 65 319 72"/><line x1="0" y1="80" x2="320" y2="80"/><circle cx="319" cy="72" r="4"/></svg>
+        <div><span>21 Oct</span><span>27 Oct</span></div>
+      </section>
+      <dl class="option4-status"><div><dt>Available</dt><dd><strong>753</strong><span>75%</span></dd></div><div><dt>On mission</dt><dd><strong>158</strong><span>16%</span></dd></div><div><dt>Unavailable</dt><dd><strong>89</strong><span>9%</span></dd></div></dl>
+    </aside>
+    <div class="option4-groups">${groups}</div>
+  </section>`;
 }
 
 // Standalone cutouts keep the whole vehicle sharp and centered in either theme.
@@ -606,7 +665,8 @@ function recordDialog(state) {
 function renderScreen(state) {
   const screen = Object.hasOwn(fleet, state.screen) ? state.screen : 'dashboard';
   const viewState = {unit: 'All', date: REFERENCE_DATE, activeRecordId: null, statusFilter: 'all', page: 1, selectedCategory: 'all', designOption: '1', ...state};
-  return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboard(viewState) : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar(viewState) + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
+  const dashboardContent = viewState.designOption === '4' ? option4Dashboard(viewState) : dashboard(viewState);
+  return header(screen, viewState) + `<main class="${screen === 'dashboard' ? 'dashboard' : 'detail detail-' + screen}" id="main-content">${screen === 'dashboard' ? dashboardContent : summary(screen, viewState) + '<section class="table-panel" aria-label="Vehicle records">' + toolbar(viewState) + vehicleTable(screen, viewState) + '</section>'}</main>${recordDialog(viewState)}`;
 }
 
 function dashboardScale(contentWidth, contentHeight, viewportWidth, viewportHeight) {
